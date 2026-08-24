@@ -91,7 +91,7 @@ function updateUpgradeButtons() {
     ownedBadge.classList.toggle("is-empty", owned === 0);
 
     const costEl = button.querySelector('[data-role="cost"]');
-    costEl.innerHTML = `${format(cost)} <span class="ember-mark">✹</span>`;
+    costEl.innerHTML = `${format(cost)} <span class="ember-mark">🎟</span>`;
 
     const buyEl = button.querySelector('[data-role="buy"]');
     buyEl.textContent = canAfford ? "Buy" : "Need more";
@@ -206,7 +206,7 @@ function purchase(upgradeId, button, originX, originY) {
   if (!result.ok) return false;
   state.embers = result.state.embers;
   state.owned = result.state.owned;
-  $("status").textContent = `${result.upgrade.name} joined your orchard.`;
+  $("status").textContent = `${result.upgrade.name} joined the booth.`;
   if (button) celebratePurchase(button, result.upgrade, originX, originY);
   render();
   save();
@@ -229,10 +229,10 @@ $("upgrades").addEventListener("click", (event) => {
 });
 
 $("reset-button").addEventListener("click", () => {
-  if (!confirm("Reset all orchard progress?")) return;
+  if (!confirm("Reset all ticket booth progress?")) return;
   state.embers = 0;
   state.owned = {};
-  $("status").textContent = "A fresh orchard awaits.";
+  $("status").textContent = "A fresh booth awaits.";
   render();
   save();
 });
