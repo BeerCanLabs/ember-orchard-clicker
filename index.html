@@ -60,7 +60,9 @@
       <header>
         <p class="eyebrow">A tiny incremental game</p>
         <h1>Ticket Booth</h1>
-        <button id="reset-button" class="reset-button" title="Start over">Reset progress</button>
+        <div class="header-actions">
+          <button id="reset-button" class="reset-button" title="Start over">Reset progress</button>
+        </div>
       </header>
 
       <section class="stats-board" aria-label="Game statistics">
@@ -92,6 +94,31 @@
             <span class="stat-value" id="xp-to-next">12</span>
           </div>
         </article>
+        <article class="stat-card stat-magic">
+          <div class="stat-icon" aria-hidden="true">✧</div>
+          <div class="stat-copy">
+            <span class="stat-label">Magic</span>
+            <span class="stat-value" id="magic-points">0</span>
+          </div>
+        </article>
+      </section>
+
+      <section class="prestige-bar" aria-label="Prestige">
+        <div class="prestige-copy">
+          <span class="prestige-kicker">Encore</span>
+          <strong class="prestige-title">Prestige</strong>
+          <p class="prestige-note">
+            Wipe upgrades, level, tickets, and satchel. Keep magic points and gain +1.
+            Magic does nothing yet.
+          </p>
+        </div>
+        <button type="button" id="prestige-button" class="prestige-button" disabled>
+          <span class="prestige-button-label">Prestige</span>
+          <span class="prestige-button-cost">
+            <span data-role="prestige-cost">200,000</span>
+            <span class="ember-mark" aria-hidden="true">🎟</span>
+          </span>
+        </button>
       </section>
 
       <section class="play-area">

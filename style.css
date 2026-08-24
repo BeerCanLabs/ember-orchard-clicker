@@ -122,10 +122,16 @@ h1 {
   text-shadow: 0 2px 24px rgba(180, 60, 100, 0.25);
 }
 
-.reset-button {
+.header-actions {
   position: absolute;
   right: 0;
   top: 10px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.reset-button {
   border: 1px solid rgba(243, 232, 222, 0.55);
   border-radius: 999px;
   background: rgba(10, 6, 14, 0.45);
@@ -262,10 +268,10 @@ h1 {
 
 .stats-board {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
   margin: 0 auto;
-  max-width: 920px;
+  max-width: 1080px;
 }
 
 .stat-card {
@@ -300,6 +306,10 @@ h1 {
 .stat-rate .stat-icon { background: rgba(79, 157, 134, 0.14); }
 .stat-click .stat-icon { background: rgba(107, 143, 212, 0.14); }
 .stat-xp .stat-icon { background: rgba(240, 193, 74, 0.14); }
+.stat-magic .stat-icon {
+  background: rgba(168, 120, 255, 0.18);
+  color: #e4d0ff;
+}
 
 .stat-copy {
   min-width: 0;
@@ -328,6 +338,98 @@ h1 {
 
 .stats-board.celebrate {
   animation: celebrate-pop 0.55s ease-out;
+}
+
+.prestige-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 14px auto 0;
+  max-width: 1080px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(180, 140, 255, 0.28);
+  background:
+    linear-gradient(135deg, rgba(56, 28, 84, 0.72), rgba(18, 10, 28, 0.88));
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(230, 200, 255, 0.08);
+}
+
+.prestige-copy {
+  min-width: 0;
+}
+
+.prestige-kicker {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: #c9a8ff;
+  margin-bottom: 4px;
+}
+
+.prestige-title {
+  display: block;
+  font-family: Fraunces, serif;
+  font-size: 22px;
+  color: #f7edff;
+  letter-spacing: -0.4px;
+}
+
+.prestige-note {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(236, 224, 255, 0.72);
+  max-width: 52ch;
+}
+
+.prestige-button {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 4px;
+  min-width: 168px;
+  padding: 12px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(210, 170, 255, 0.35);
+  background: linear-gradient(180deg, rgba(92, 48, 150, 0.55), rgba(40, 18, 72, 0.9));
+  color: #f6edff;
+  cursor: pointer;
+  text-align: center;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+}
+
+.prestige-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.25);
+}
+
+.prestige-button.is-ready {
+  box-shadow: 0 0 0 1px rgba(210, 170, 255, 0.25), 0 10px 24px rgba(120, 60, 220, 0.35);
+}
+
+.prestige-button.is-ready:hover {
+  transform: translateY(-1px);
+}
+
+.prestige-button-label {
+  font-family: Fraunces, serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.prestige-button-cost {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: #e8d6ff;
+}
+
+.prestige-button-cost .ember-mark {
+  margin-left: 4px;
 }
 
 .play-area {
@@ -859,10 +961,13 @@ h1 {
 
 @media (max-width: 700px) {
   .game-shell { padding-top: 27px; }
-  .reset-button { position: static; margin-top: 16px; }
+  .header-actions { position: static; justify-content: center; margin-top: 16px; }
   .play-area { grid-template-columns: 1fr; gap: 34px; }
   .claim-pad { width: min(330px, 84vw); }
   .stats-board { grid-template-columns: 1fr 1fr; }
+  .prestige-bar { flex-direction: column; align-items: stretch; text-align: center; }
+  .prestige-note { max-width: none; }
+  .prestige-button { width: 100%; }
   .level-badge { top: 12px; left: 12px; transform: scale(0.92); transform-origin: top left; }
   .level-exp-tip { display: none; }
   .shop { max-width: 500px; margin: auto; width: 100%; }

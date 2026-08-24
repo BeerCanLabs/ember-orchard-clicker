@@ -22,6 +22,7 @@ Each KPF below is a user-visible promise. Its automated test must continue to pa
 | Satchel inventory | Player has a satchel with **25** pockets; items stack to **4** per pocket. | `satchel inventory holds 25 slots and stacks items to four` |
 | Iron Helmet | Owning at least one Iron Helmet grants **+10% tickets/sec**; extra helmets do not stack the bonus. | `iron helmet grants a non-stacking 10 percent passive bonus` |
 | Milestone loot | Every **5** levels is a milestone; loot rolls Dice/Cards/Pictures often and Iron Helmet rarely. | `milestone levels are every five and item rolls include rare helmet` |
+| Prestige | Costs **200,000** tickets; resets tickets, upgrades, level/XP, and satchel items; awards **+1 magic point** (magic has no effect yet). | `prestige costs 200000 and awards one magic point while wiping the run` |
 
 ## Test command
 
@@ -38,6 +39,10 @@ The shop must **not** destroy/recreate upgrade buttons on the passive income tic
 ## UI note (level badge)
 
 Player level is shown as a fixed circle in the **top-left**, with a ring filling toward the next level. Level-ups sparkle; every 5th level plays a unique milestone FX and grants a random satchel item.
+
+## UI note (prestige)
+
+A prestige bar under the stats board spends **200,000** tickets to wipe the current run and bank **+1 magic point**. Magic points are shown in the stats board and currently do nothing.
 
 ## Dev note (temporary)
 
