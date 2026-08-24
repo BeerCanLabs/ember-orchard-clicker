@@ -10,8 +10,13 @@ const {
   totalOwned,
   levelProgress,
   grantExp,
+  forceLevelUp,
   normalizeInventory,
   inventoryUsed,
+  addItemToInventory,
+  rollMilestoneItem,
+  isMilestoneLevel,
+  milestoneAnimation,
   INVENTORY_SIZE,
   CLICK_EXP,
   BUY_EXP,
@@ -33,6 +38,11 @@ const prefersReducedMotion = () =>
 
 const LEVEL_RING_RADIUS = 37;
 const LEVEL_RING_CIRCUMFERENCE = 2 * Math.PI * LEVEL_RING_RADIUS;
+const CURTAIN_OPEN_MS = 2800;
+
+function playerLevel() {
+  return levelProgress(state.exp).level;
+}
 
 function save() {
   localStorage.setItem(
@@ -125,14 +135,13 @@ function createCurtainSlot(upgrade, button) {
   const lockedLabel = document.createElement("div");
   lockedLabel.className = "curtain-lock-label";
   lockedLabel.dataset.role = "lock-label";
-  lockedLabel.textContent = "Opens after 20 upgrades";
+  lockedLabel.textContent = "Opens at level 10";
 
   stage.append(valance, left, right, lockedLabel, button);
   slot.append(stage);
   return slot;
 }
 
-/** Build upgrade buttons once — never replace them on the passive tick. */
 function mountUpgrades() {
   const list = $("upgrades");
   list.replaceChildren();
@@ -158,18 +167,18 @@ function revealCurtains(slot, animate) {
   window.setTimeout(() => {
     slot.classList.remove("is-opening");
     slot.classList.add("is-open");
-  }, 1400);
+  }, CURTAIN_OPEN_MS);
 }
 
 function updateUpgradeButtons() {
-  const ownedTotal = totalOwned(state.owned);
+  const level = playerLevel();
 
   for (const upgrade of upgrades) {
     const button = $("upgrades").querySelector(`button[data-id="${upgrade.id}"]`);
     if (!button) continue;
 
     const slot = button.closest(".upgrade-slot");
-    const unlocked = isUnlocked(upgrade, state.owned);
+    const unlocked = isUnlocked(upgrade, state.owned, { level });
     const cost = price(upgrade, state.owned);
     const owned = state.owned[upgrade.id] || 0;
     const cap = maxFor(upgrade);
@@ -184,11 +193,10 @@ function updateUpgradeButtons() {
         delete slot.dataset.seenOpen;
         const lockLabel = slot.querySelector('[data-role="lock-label"]');
         if (lockLabel) {
-          const remaining = Math.max(0, (upgrade.unlockAt || 0) - ownedTotal);
+          const need = upgrade.unlockAtLevel || 10;
+          const remaining = Math.max(0, need - level);
           lockLabel.textContent =
-            remaining <= 0
-              ? "Opens after 20 upgrades"
-              : `${remaining} more upgrade${remaining === 1 ? "" : "s"} to open`;
+            remaining <= 0 ? `Opens at level ${need}` : `Opens at level ${need} (${remaining} to go)`;
         }
       } else if (!slot.classList.contains("is-open") && !slot.classList.contains("is-opening")) {
         const animate = slot.dataset.ready === "1" && slot.dataset.seenOpen !== "1";
@@ -243,6 +251,96 @@ function pulseLevelBadge(leveledUp) {
   window.setTimeout(() => badge.classList.remove("is-gain", "is-level-up"), leveledUp ? 900 : 420);
 }
 
+function spawnLevelSparkles() {
+  if (prefersReducedMotion()) return;
+  const badge = $("level-badge");
+  if (!badge) return;
+  const rect = badge.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  for (let i = 0; i < 18; i += 1) {
+    const spark = document.createElement("span");
+    spark.className = "level-sparkle";
+    spark.textContent = i % 2 === 0 ? "✦" : "✧";
+    const angle = (Math.PI * 2 * i) / 18 + Math.random() * 0.35;
+    const dist = 36 + Math.random() * 48;
+    spark.style.left = `${cx}px`;
+    spark.style.top = `${cy}px`;
+    spark.style.setProperty("--dx", `${Math.cos(angle) * dist}px`);
+    spark.style.setProperty("--dy", `${Math.sin(angle) * dist}px`);
+    spark.style.setProperty("--delay", `${(i * 0.018).toFixed(3)}s`);
+    document.body.appendChild(spark);
+    window.setTimeout(() => spark.remove(), 1100);
+  }
+}
+
+function playMilestoneAnimation(level) {
+  if (prefersReducedMotion()) return;
+  const kind = milestoneAnimation(level);
+  const layer = document.createElement("div");
+  layer.className = `milestone-fx milestone-fx-${kind}`;
+  layer.setAttribute("aria-hidden", "true");
+  document.body.appendChild(layer);
+
+  if (kind === "gold-shower") {
+    for (let i = 0; i < 36; i += 1) {
+      const drop = document.createElement("span");
+      drop.className = "milestone-drop";
+      drop.style.left = `${Math.random() * 100}%`;
+      drop.style.setProperty("--fall", `${0.9 + Math.random() * 1.1}s`);
+      drop.style.setProperty("--delay", `${Math.random() * 0.35}s`);
+      drop.style.setProperty("--size", `${6 + Math.random() * 8}px`);
+      layer.appendChild(drop);
+    }
+  } else if (kind === "star-nova") {
+    for (let i = 0; i < 24; i += 1) {
+      const star = document.createElement("span");
+      star.className = "milestone-star";
+      star.textContent = "★";
+      const angle = (Math.PI * 2 * i) / 24;
+      star.style.setProperty("--dx", `${Math.cos(angle) * 140}px`);
+      star.style.setProperty("--dy", `${Math.sin(angle) * 140}px`);
+      layer.appendChild(star);
+    }
+  } else if (kind === "ring-wave") {
+    for (let i = 0; i < 4; i += 1) {
+      const ring = document.createElement("span");
+      ring.className = "milestone-ring";
+      ring.style.setProperty("--delay", `${i * 0.14}s`);
+      layer.appendChild(ring);
+    }
+  } else {
+    for (let i = 0; i < 28; i += 1) {
+      const shard = document.createElement("span");
+      shard.className = "milestone-shard";
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 80 + Math.random() * 160;
+      shard.style.setProperty("--dx", `${Math.cos(angle) * dist}px`);
+      shard.style.setProperty("--dy", `${Math.sin(angle) * dist}px`);
+      shard.style.setProperty("--hue", `${Math.floor(Math.random() * 360)}`);
+      layer.appendChild(shard);
+    }
+  }
+
+  window.setTimeout(() => layer.remove(), 2200);
+}
+
+function grantMilestoneReward(level) {
+  const itemId = rollMilestoneItem();
+  const result = addItemToInventory(state.inventory, itemId);
+  playMilestoneAnimation(level);
+  if (!result.ok) {
+    $("status").textContent = `Level ${level} milestone! Satchel is full — no room for loot.`;
+    return result;
+  }
+  state.inventory = result.inventory;
+  const item = result.item;
+  const stackNote = item.qty > 1 ? ` (×${item.qty})` : "";
+  $("status").textContent = `Level ${level} milestone! Found ${item.name}${stackNote}.`;
+  renderInventory();
+  return result;
+}
+
 function renderLevel() {
   const progress = levelProgress(state.exp);
   $("level-value").textContent = String(progress.level);
@@ -272,15 +370,40 @@ function applyExp(amount) {
   state.exp = result.totalExp;
   renderLevel();
   pulseLevelBadge(result.leveledUp);
+
   if (result.leveledUp) {
-    $("status").textContent = `Level up! You reached level ${result.level}.`;
+    spawnLevelSparkles();
+    const milestones = result.crossedLevels.filter((level) => isMilestoneLevel(level));
+    if (milestones.length) {
+      // Process in order; last message wins if multiple (rare with normal XP).
+      for (const level of milestones) grantMilestoneReward(level);
+    } else {
+      $("status").textContent = `Level up! You reached level ${result.level}.`;
+    }
   }
+  return result;
+}
+
+function devForceLevelUp() {
+  const result = forceLevelUp(state.exp);
+  state.exp = result.totalExp;
+  renderLevel();
+  pulseLevelBadge(true);
+  spawnLevelSparkles();
+  const milestones = result.crossedLevels.filter((level) => isMilestoneLevel(level));
+  if (milestones.length) {
+    for (const level of milestones) grantMilestoneReward(level);
+  } else {
+    $("status").textContent = `Dev LOVE: jumped to level ${result.level}.`;
+  }
+  render();
+  save();
   return result;
 }
 
 function render() {
   $("embers").textContent = format(state.embers);
-  $("per-second").textContent = format(perSecond(state.owned));
+  $("per-second").textContent = format(perSecond(state.owned, state.inventory));
   $("per-click").textContent = format(perClick(state.owned));
   $("owned-count").textContent = `${totalOwned(state.owned)} owned`;
   renderLevel();
@@ -393,7 +516,7 @@ function celebratePurchase(button, upgrade, originX, originY) {
 }
 
 function purchase(upgradeId, button, originX, originY) {
-  const result = buyUpgrade(state, upgradeId);
+  const result = buyUpgrade(state, upgradeId, { level: playerLevel() });
   if (!result.ok) return false;
   state.embers = result.state.embers;
   state.owned = result.state.owned;
@@ -438,6 +561,7 @@ function mountInventory() {
       <span class="satchel-slot-index">${i + 1}</span>
       <span class="satchel-slot-empty">·</span>
       <span class="satchel-slot-item" hidden></span>
+      <span class="satchel-slot-qty" hidden></span>
     `;
     grid.append(slot);
   }
@@ -456,6 +580,7 @@ function renderInventory() {
     const item = state.inventory[i];
     const emptyMark = slot.querySelector(".satchel-slot-empty");
     const itemMark = slot.querySelector(".satchel-slot-item");
+    const qtyMark = slot.querySelector(".satchel-slot-qty");
     if (item == null) {
       slot.classList.add("is-empty");
       slot.classList.remove("is-filled");
@@ -465,14 +590,23 @@ function renderInventory() {
         itemMark.hidden = true;
         itemMark.textContent = "";
       }
+      if (qtyMark) {
+        qtyMark.hidden = true;
+        qtyMark.textContent = "";
+      }
     } else {
       slot.classList.remove("is-empty");
       slot.classList.add("is-filled");
-      slot.title = item.name || `Item ${i + 1}`;
+      slot.title = `${item.name}${item.qty > 1 ? ` ×${item.qty}` : ""}`;
       if (emptyMark) emptyMark.hidden = true;
       if (itemMark) {
         itemMark.hidden = false;
         itemMark.textContent = item.icon || "•";
+      }
+      if (qtyMark) {
+        const showQty = item.qty > 1;
+        qtyMark.hidden = !showQty;
+        qtyMark.textContent = showQty ? `×${item.qty}` : "";
       }
     }
   }
@@ -522,8 +656,23 @@ $("satchel-overlay").addEventListener("click", (event) => {
   if (event.target === $("satchel-overlay")) closeSatchel();
 });
 
+// Dev shortcut: type L-O-V-E to force one level-up. Temporary.
+let loveBuffer = "";
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && isSatchelOpen()) closeSatchel();
+  if (event.key === "Escape" && isSatchelOpen()) {
+    closeSatchel();
+    return;
+  }
+
+  const tag = (event.target && event.target.tagName) || "";
+  if (tag === "INPUT" || tag === "TEXTAREA" || event.target?.isContentEditable) return;
+  if (!event.key || event.key.length !== 1) return;
+
+  loveBuffer = (loveBuffer + event.key.toUpperCase()).slice(-4);
+  if (loveBuffer === "LOVE") {
+    loveBuffer = "";
+    devForceLevelUp();
+  }
 });
 
 $("reset-button").addEventListener("click", () => {
@@ -546,7 +695,7 @@ $("reset-button").addEventListener("click", () => {
 
 // Passive income: update numbers in place. Do NOT rebuild upgrade button DOM.
 setInterval(() => {
-  const cps = perSecond(state.owned);
+  const cps = perSecond(state.owned, state.inventory);
   if (cps > 0) state.embers += cps / 10;
   render();
 }, 100);

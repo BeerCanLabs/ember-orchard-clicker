@@ -15,10 +15,13 @@ Each KPF below is a user-visible promise. Its automated test must continue to pa
 | Reliable purchases | An affordable upgrade click always spends tickets and grants ownership; unaffordable or unknown ids never mutate state. | `affordable upgrade purchases succeed and spend tickets`, `unaffordable upgrade purchases are rejected without mutation`, `unknown upgrade ids never alter state` |
 | Rapid purchase consistency | Repeated upgrade clicks while funded apply in sequence without lost or double-spent purchases. | `rapid successive purchases remain consistent` |
 | Ownership cap | Standard upgrades can be bought at most **50** times; further buys are rejected as maxed. | `standard upgrades can be owned at most 50 times`, `ownership just under the cap can still buy once` |
-| Double feature | Costs **100,000**, unlocks after **20** total upgrades owned, purchasable once, doubles all earnings. | `double feature costs 100000 and can only be bought once`, `double feature stays locked until 20 total upgrades are owned`, `double feature doubles claim and passive earnings` |
+| Double feature | Costs **100,000**, unlocks at **player level 10**, purchasable once, doubles all earnings. | `double feature costs 100000 and can only be bought once`, `double feature stays locked until player reaches level 10`, `double feature doubles claim and passive earnings` |
 | Experience | Manual **claim** grants **1 XP**; buying an upgrade grants **10 XP**. | `manual claims grant 1 exp and purchases grant 10 exp` |
 | Leveling | Accumulated XP raises player level; the top-left ring shows progress to the next level. | `enough exp increases player level` |
-| Satchel inventory | Player has a satchel with **25** item slots; it starts empty (no items yet). | `satchel inventory holds 25 empty slots and no items yet` |
+| Force level | Completing the current XP bar raises exactly one level. | `force level up completes exactly one level` |
+| Satchel inventory | Player has a satchel with **25** pockets; items stack to **4** per pocket. | `satchel inventory holds 25 slots and stacks items to four` |
+| Iron Helmet | Owning at least one Iron Helmet grants **+10% tickets/sec**; extra helmets do not stack the bonus. | `iron helmet grants a non-stacking 10 percent passive bonus` |
+| Milestone loot | Every **5** levels is a milestone; loot rolls Dice/Cards/Pictures often and Iron Helmet rarely. | `milestone levels are every five and item rolls include rare helmet` |
 
 ## Test command
 
@@ -30,8 +33,12 @@ The shop must **not** destroy/recreate upgrade buttons on the passive income tic
 
 ## UI note (double feature reveal)
 
-**Double feature** stays behind closed movie curtains until 20 upgrades are owned. Crossing that threshold plays a curtain-opening reveal (skipped when `prefers-reduced-motion` is set).
+**Double feature** stays behind closed movie curtains until the player reaches **level 10**. Crossing that threshold plays a curtain-opening reveal (~2.8s; skipped when `prefers-reduced-motion` is set).
 
 ## UI note (level badge)
 
-Player level is shown as a fixed circle in the **top-left**, with a ring filling toward the next level.
+Player level is shown as a fixed circle in the **top-left**, with a ring filling toward the next level. Level-ups sparkle; every 5th level plays a unique milestone FX and grants a random satchel item.
+
+## Dev note (temporary)
+
+Typing **LOVE** anywhere (outside text fields) forces exactly one level-up. Remove when asked.
