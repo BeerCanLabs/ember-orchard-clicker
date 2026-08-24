@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ember Orchard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <header>
+        <p class="eyebrow">A tiny incremental game</p>
+        <h1>Ember Orchard</h1>
+        <button id="reset-button" class="reset-button" title="Start over">Reset progress</button>
+      </header>
+
+      <section class="stats" aria-label="Game statistics">
+        <div><span id="embers">0</span><small>embers</small></div>
+        <div><span id="per-second">0</span><small>per second</small></div>
+        <div><span id="per-click">1</span><small>per click</small></div>
+      </section>
+
+      <section class="play-area">
+        <div class="orchard-wrap">
+          <button id="orchard-button" class="orchard-button" aria-label="Gather an ember">
+            <span class="tree tree-one">✦</span><span class="tree tree-two">✦</span><span class="tree tree-three">✦</span>
+            <span class="orb">✹</span>
+            <span class="button-label">gather</span>
+          </button>
+          <p class="hint">The orchard remembers every spark.</p>
+        </div>
+
+        <aside class="shop" aria-label="Upgrades">
+          <div class="shop-title"><span>Grow the orchard</span><span id="owned-count">0 owned</span></div>
+          <div id="upgrades" class="upgrades"></div>
+        </aside>
+      </section>
+      <p id="status" class="status" aria-live="polite">Your grove is quiet. For now.</p>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
