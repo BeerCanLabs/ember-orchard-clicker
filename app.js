@@ -1,4 +1,4 @@
-const { upgrades, price, perSecond, perClick, buyUpgrade } = window.GameCore;
+const { upgrades, price, perSecond, perClick, buyUpgrade, isMaxed, MAX_OWNED } = window.GameCore;
 
 const saved = JSON.parse(localStorage.getItem("ember-orchard-save") || "{}");
 const state = {
@@ -81,20 +81,27 @@ function updateUpgradeButtons() {
     if (!button) continue;
     const cost = price(upgrade, state.owned);
     const owned = state.owned[upgrade.id] || 0;
-    const canAfford = state.embers >= cost;
+    const maxed = isMaxed(upgrade, state.owned);
+    const canAfford = !maxed && state.embers >= cost;
     button.disabled = !canAfford;
+    button.classList.toggle("is-maxed", maxed);
 
     button.querySelector('[data-role="title"]').textContent = upgrade.name;
 
     const ownedBadge = button.querySelector('[data-role="owned"]');
-    ownedBadge.textContent = `×${owned}`;
-    ownedBadge.classList.toggle("is-empty", owned === 0);
+    ownedBadge.textContent = maxed ? `MAX ${MAX_OWNED}` : `×${owned}`;
+    ownedBadge.classList.toggle("is-empty", owned === 0 && !maxed);
+    ownedBadge.classList.toggle("is-max", maxed);
 
     const costEl = button.querySelector('[data-role="cost"]');
-    costEl.innerHTML = `${format(cost)} <span class="ember-mark">🎟</span>`;
-
     const buyEl = button.querySelector('[data-role="buy"]');
-    buyEl.textContent = canAfford ? "Buy" : "Need more";
+    if (maxed) {
+      costEl.textContent = "—";
+      buyEl.textContent = "Maxed";
+    } else {
+      costEl.innerHTML = `${format(cost)} <span class="ember-mark">🎟</span>`;
+      buyEl.textContent = canAfford ? "Buy" : "Need more";
+    }
   }
 }
 
