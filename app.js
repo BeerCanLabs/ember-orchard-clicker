@@ -90,28 +90,53 @@ function playPress(button) {
   window.setTimeout(() => button.classList.remove("is-pressed"), 120);
 }
 
-function burstSparks(button, glyph) {
-  const rect = button.getBoundingClientRect();
-  const originX = rect.left + rect.width * 0.22;
-  const originY = rect.top + rect.height * 0.5;
-  const marks = [glyph, "✹", "✦", "·", glyph];
-  for (let i = 0; i < marks.length; i += 1) {
-    const spark = document.createElement("span");
-    spark.className = "spark";
-    spark.textContent = marks[i];
-    const angle = (-70 + i * 35) * (Math.PI / 180);
-    const distance = 28 + (i % 3) * 14;
-    spark.style.left = `${originX}px`;
-    spark.style.top = `${originY}px`;
-    spark.style.setProperty("--dx", `${Math.cos(angle) * distance}px`);
-    spark.style.setProperty("--dy", `${Math.sin(angle) * distance - 18}px`);
-    spark.style.setProperty("--spin", `${i % 2 === 0 ? 18 : -22}deg`);
-    document.body.appendChild(spark);
-    window.setTimeout(() => spark.remove(), 750);
+const CONFETTI_COLORS = [
+  "#ec6a3a",
+  "#f5b0a9",
+  "#34695e",
+  "#f0c14a",
+  "#6b8fd4",
+  "#c45ad4",
+  "#ff8fab",
+  "#2db7a0",
+  "#ffd166",
+  "#ef476f",
+];
+
+const CONFETTI_SHAPES = ["", "is-circle", "is-strip", "is-diamond"];
+
+/** Colorful confetti burst originating at the mouse / pointer position. */
+function burstConfetti(originX, originY) {
+  const count = 28;
+  for (let i = 0; i < count; i += 1) {
+    const piece = document.createElement("span");
+    const shape = CONFETTI_SHAPES[i % CONFETTI_SHAPES.length];
+    piece.className = shape ? `confetti ${shape}` : "confetti";
+    piece.style.left = `${originX}px`;
+    piece.style.top = `${originY}px`;
+    piece.style.setProperty("--color", CONFETTI_COLORS[i % CONFETTI_COLORS.length]);
+    piece.style.setProperty("--size", `${5 + (i % 5) * 2}px`);
+
+    // Mostly upward fan with gravity-ish drop, seeded by index for variety.
+    const angle = (-Math.PI * 0.15) - Math.random() * Math.PI * 0.7 + (i / count - 0.5) * 0.9;
+    const speed = 70 + Math.random() * 120;
+    const dx = Math.cos(angle) * speed * (0.55 + Math.random() * 0.7);
+    const dy = Math.sin(angle) * speed - (40 + Math.random() * 50);
+    const spin = `${(Math.random() > 0.5 ? 1 : -1) * (180 + Math.random() * 420)}deg`;
+    const duration = 0.75 + Math.random() * 0.55;
+
+    piece.style.setProperty("--dx", `${dx.toFixed(1)}px`);
+    piece.style.setProperty("--dy", `${(dy + 90 + Math.random() * 70).toFixed(1)}px`);
+    piece.style.setProperty("--spin", spin);
+    piece.style.setProperty("--duration", `${duration.toFixed(2)}s`);
+    piece.style.setProperty("--end-scale", `${(0.55 + Math.random() * 0.5).toFixed(2)}`);
+
+    document.body.appendChild(piece);
+    window.setTimeout(() => piece.remove(), duration * 1000 + 40);
   }
 }
 
-function celebratePurchase(button, upgrade) {
+function celebratePurchase(button, upgrade, originX, originY) {
   playPress(button);
   button.classList.remove("celebrate");
   void button.offsetWidth;
@@ -132,16 +157,19 @@ function celebratePurchase(button, upgrade) {
   status.classList.add("is-celebrating");
   window.setTimeout(() => status.classList.remove("is-celebrating"), 700);
 
-  burstSparks(button, upgrade.icon);
+  const rect = button.getBoundingClientRect();
+  const x = Number.isFinite(originX) ? originX : rect.left + rect.width / 2;
+  const y = Number.isFinite(originY) ? originY : rect.top + rect.height / 2;
+  burstConfetti(x, y);
 }
 
-function purchase(upgradeId, button) {
+function purchase(upgradeId, button, originX, originY) {
   const result = buyUpgrade(state, upgradeId);
   if (!result.ok) return false;
   state.embers = result.state.embers;
   state.owned = result.state.owned;
   $("status").textContent = `${result.upgrade.name} joined your orchard.`;
-  if (button) celebratePurchase(button, result.upgrade);
+  if (button) celebratePurchase(button, result.upgrade, originX, originY);
   render();
   save();
   return true;
@@ -159,7 +187,7 @@ $("upgrades").addEventListener("pointerdown", (event) => {
 $("upgrades").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-id]");
   if (!button || button.disabled) return;
-  purchase(button.dataset.id, button);
+  purchase(button.dataset.id, button, event.clientX, event.clientY);
 });
 
 $("reset-button").addEventListener("click", () => {
