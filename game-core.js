@@ -1,6 +1,6 @@
 (function (root, factory) {
   const core = factory();
-  if (typeof module !== "undefined") module.exports = core;
+  if (typeof module !== "undefined" && module.exports) module.exports = core;
   root.GameCore = core;
 })(typeof window !== "undefined" ? window : globalThis, () => {
   const upgrades = [
@@ -15,5 +15,22 @@
   const perSecond = (owned) => upgrades.reduce((sum, upgrade) => sum + (upgrade.cps || 0) * count(owned, upgrade.id), 0);
   const perClick = (owned) => 1 + upgrades.reduce((sum, upgrade) => sum + (upgrade.click || 0) * count(owned, upgrade.id), 0);
 
-  return { upgrades, price, perSecond, perClick };
+  /** Pure purchase attempt. Never mutates input. */
+  function buyUpgrade(state, upgradeId) {
+    const upgrade = upgrades.find((entry) => entry.id === upgradeId);
+    if (!upgrade) return { ok: false, reason: "unknown", state };
+    const cost = price(upgrade, state.owned);
+    if ((state.embers || 0) < cost) return { ok: false, reason: "unaffordable", state, cost, upgrade };
+    return {
+      ok: true,
+      cost,
+      upgrade,
+      state: {
+        embers: state.embers - cost,
+        owned: { ...state.owned, [upgradeId]: count(state.owned, upgradeId) + 1 },
+      },
+    };
+  }
+
+  return { upgrades, price, perSecond, perClick, buyUpgrade, count };
 });
