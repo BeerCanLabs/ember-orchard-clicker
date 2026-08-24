@@ -2,22 +2,26 @@
 
 An original, single-page incremental browser game. Click the glowing ember, grow the orchard, and your progress saves automatically in your browser.
 
-## Run it on your computer
+## 🚀 Run on your Mac (one click)
 
-### Quick Install (Recommended)
-- **macOS / Linux**: [Run `install.sh`](install.sh)
-- **Windows**: [Run `install.bat`](install.bat)
+**Easiest way:**
 
-Or follow the manual steps below.
+1. Make sure you have [Node.js](https://nodejs.org/) installed (LTS recommended)
+2. Open **Terminal** and run this single command:
 
-1. Install [Node.js](https://nodejs.org/) (the LTS version is ideal).
-2. Open a terminal in this project folder.
-3. Run `npx serve .`
-4. Open the address the terminal shows, usually `http://localhost:3000`.
+```bash
+git clone https://github.com/BestDax/ember-orchard-clicker.git && cd ember-orchard-clicker && npm start
+```
 
-You can also double-click `index.html` to open it immediately; the local server approach is preferable while developing.
+The game will automatically open at `http://localhost:3000`.
 
-Install scripts are provided in `install.sh` and `install.bat`.
+---
+
+### Other options
+
+- **Windows**: Clone the repo then run `install.bat`
+- **Double-click**: Just open `index.html` in your browser (no server needed)
+- **VS Code**: [![Open in VS Code](https://img.shields.io/badge/Open%20in-VS%20Code-blue?logo=visualstudiocode)](https://vscode.dev/github/BestDax/ember-orchard-clicker)
 
 ## Files
 
