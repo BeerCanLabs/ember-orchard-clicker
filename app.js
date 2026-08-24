@@ -10,6 +10,9 @@ const {
   totalOwned,
   levelProgress,
   grantExp,
+  normalizeInventory,
+  inventoryUsed,
+  INVENTORY_SIZE,
   CLICK_EXP,
   BUY_EXP,
   MAX_OWNED,
@@ -20,6 +23,7 @@ const state = {
   embers: Number(saved.embers) || 0,
   owned: saved.owned && typeof saved.owned === "object" ? saved.owned : {},
   exp: Number(saved.exp) || 0,
+  inventory: normalizeInventory(saved.inventory),
 };
 
 const $ = (id) => document.getElementById(id);
@@ -27,12 +31,18 @@ const format = (number) => Math.floor(number).toLocaleString();
 const prefersReducedMotion = () =>
   window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-const LEVEL_RING_CIRCUMFERENCE = 2 * Math.PI * 32;
+const LEVEL_RING_RADIUS = 37;
+const LEVEL_RING_CIRCUMFERENCE = 2 * Math.PI * LEVEL_RING_RADIUS;
 
 function save() {
   localStorage.setItem(
     "ember-orchard-save",
-    JSON.stringify({ embers: state.embers, owned: state.owned, exp: state.exp })
+    JSON.stringify({
+      embers: state.embers,
+      owned: state.owned,
+      exp: state.exp,
+      inventory: state.inventory,
+    })
   );
 }
 
@@ -274,6 +284,7 @@ function render() {
   $("per-click").textContent = format(perClick(state.owned));
   $("owned-count").textContent = `${totalOwned(state.owned)} owned`;
   renderLevel();
+  renderInventory();
   updateUpgradeButtons();
 }
 
@@ -414,11 +425,113 @@ $("upgrades").addEventListener("click", (event) => {
   purchase(button.dataset.id, button, event.clientX, event.clientY);
 });
 
+function mountInventory() {
+  const grid = $("satchel-grid");
+  if (!grid) return;
+  grid.replaceChildren();
+  for (let i = 0; i < INVENTORY_SIZE; i += 1) {
+    const slot = document.createElement("div");
+    slot.className = "satchel-slot is-empty";
+    slot.dataset.index = String(i);
+    slot.setAttribute("role", "listitem");
+    slot.innerHTML = `
+      <span class="satchel-slot-index">${i + 1}</span>
+      <span class="satchel-slot-empty">·</span>
+      <span class="satchel-slot-item" hidden></span>
+    `;
+    grid.append(slot);
+  }
+}
+
+function renderInventory() {
+  const used = inventoryUsed(state.inventory);
+  if ($("satchel-count")) $("satchel-count").textContent = `${used}/${INVENTORY_SIZE}`;
+  if ($("satchel-capacity")) $("satchel-capacity").textContent = `${used} / ${INVENTORY_SIZE}`;
+
+  const grid = $("satchel-grid");
+  if (!grid) return;
+  for (let i = 0; i < INVENTORY_SIZE; i += 1) {
+    const slot = grid.querySelector(`[data-index="${i}"]`);
+    if (!slot) continue;
+    const item = state.inventory[i];
+    const emptyMark = slot.querySelector(".satchel-slot-empty");
+    const itemMark = slot.querySelector(".satchel-slot-item");
+    if (item == null) {
+      slot.classList.add("is-empty");
+      slot.classList.remove("is-filled");
+      slot.title = `Empty pocket ${i + 1}`;
+      if (emptyMark) emptyMark.hidden = false;
+      if (itemMark) {
+        itemMark.hidden = true;
+        itemMark.textContent = "";
+      }
+    } else {
+      slot.classList.remove("is-empty");
+      slot.classList.add("is-filled");
+      slot.title = item.name || `Item ${i + 1}`;
+      if (emptyMark) emptyMark.hidden = true;
+      if (itemMark) {
+        itemMark.hidden = false;
+        itemMark.textContent = item.icon || "•";
+      }
+    }
+  }
+}
+
+function isSatchelOpen() {
+  const overlay = $("satchel-overlay");
+  return overlay && !overlay.hasAttribute("hidden");
+}
+
+function openSatchel() {
+  const overlay = $("satchel-overlay");
+  const button = $("satchel-button");
+  if (!overlay) return;
+  overlay.hidden = false;
+  requestAnimationFrame(() => overlay.classList.add("is-open"));
+  if (button) button.setAttribute("aria-expanded", "true");
+  document.body.classList.add("satchel-open");
+  renderInventory();
+}
+
+function closeSatchel() {
+  const overlay = $("satchel-overlay");
+  const button = $("satchel-button");
+  if (!overlay) return;
+  overlay.classList.remove("is-open");
+  if (button) button.setAttribute("aria-expanded", "false");
+  document.body.classList.remove("satchel-open");
+  window.setTimeout(() => {
+    if (!overlay.classList.contains("is-open")) overlay.hidden = true;
+  }, 220);
+}
+
+function toggleSatchel() {
+  if (isSatchelOpen()) closeSatchel();
+  else openSatchel();
+}
+
+$("satchel-button").addEventListener("click", (event) => {
+  event.stopPropagation();
+  toggleSatchel();
+});
+
+$("satchel-close").addEventListener("click", () => closeSatchel());
+
+$("satchel-overlay").addEventListener("click", (event) => {
+  if (event.target === $("satchel-overlay")) closeSatchel();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && isSatchelOpen()) closeSatchel();
+});
+
 $("reset-button").addEventListener("click", () => {
   if (!confirm("Reset all ticket booth progress?")) return;
   state.embers = 0;
   state.owned = {};
   state.exp = 0;
+  state.inventory = normalizeInventory([]);
   $("status").textContent = "A fresh booth awaits.";
   for (const slot of $("upgrades").querySelectorAll(".upgrade-slot")) {
     slot.classList.remove("is-open", "is-opening");
@@ -426,6 +539,7 @@ $("reset-button").addEventListener("click", () => {
     delete slot.dataset.seenOpen;
     slot.dataset.ready = "1";
   }
+  closeSatchel();
   render();
   save();
 });
@@ -439,4 +553,5 @@ setInterval(() => {
 
 setInterval(save, 5000);
 mountUpgrades();
+mountInventory();
 render();
