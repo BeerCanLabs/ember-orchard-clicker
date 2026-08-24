@@ -5,8 +5,8 @@ An original, single-page incremental browser game. Click the glowing ember, grow
 ## Run it on your computer
 
 ### Quick Install (Recommended)
-- **macOS / Linux**: Run `./install.sh`
-- **Windows**: Run `install.bat`
+- **macOS / Linux**: [Run `install.sh`](install.sh)
+- **Windows**: [Run `install.bat`](install.bat)
 
 Or follow the manual steps below.
 
