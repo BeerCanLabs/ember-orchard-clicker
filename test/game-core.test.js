@@ -14,9 +14,13 @@ const {
   expRequiredForLevel,
   levelProgress,
   grantExp,
+  createEmptyInventory,
+  normalizeInventory,
+  inventoryUsed,
   CLICK_EXP,
   BUY_EXP,
   MAX_OWNED,
+  INVENTORY_SIZE,
 } = require("../game-core.js");
 
 const byId = (id) => upgrades.find((upgrade) => upgrade.id === id);
@@ -25,9 +29,9 @@ test("KPF: claiming begins at one ticket per click", () => {
   assert.equal(perClick({}), 1);
 });
 
-test("KPF: ticket clerk is the first shop entry and costs 50", () => {
+test("KPF: ticket clerk is the first shop entry and costs 25", () => {
   assert.equal(upgrades[0].id, "lantern");
-  assert.equal(price(byId("lantern"), {}), 50);
+  assert.equal(price(byId("lantern"), {}), 25);
 });
 
 test("KPF: shop order ends with double feature after box office", () => {
@@ -55,12 +59,12 @@ test("KPF: each upgrade has a unique identifier", () => {
 });
 
 test("KPF: affordable upgrade purchases succeed and spend tickets", () => {
-  const before = { embers: 120, owned: {} };
+  const before = { embers: 60, owned: {} };
   const result = buyUpgrade(before, "lantern");
   assert.equal(result.ok, true);
-  assert.equal(result.state.embers, 70);
+  assert.equal(result.state.embers, 35);
   assert.equal(result.state.owned.lantern, 1);
-  assert.equal(before.embers, 120);
+  assert.equal(before.embers, 60);
   assert.deepEqual(before.owned, {});
 });
 
@@ -116,19 +120,19 @@ test("KPF: ownership just under the cap can still buy once", () => {
 });
 
 test("KPF: base shop prices are half of the prior elevated tier", () => {
-  assert.equal(price(byId("lantern"), {}), 50);
-  assert.equal(price(byId("roots"), {}), 225);
-  assert.equal(price(byId("moth"), {}), 900);
-  assert.equal(price(byId("grove"), {}), 4750);
+  assert.equal(price(byId("lantern"), {}), 25);
+  assert.equal(price(byId("roots"), {}), 112);
+  assert.equal(price(byId("moth"), {}), 450);
+  assert.equal(price(byId("grove"), {}), 2375);
 });
 
-test("KPF: double feature costs 50000 and can only be bought once", () => {
+test("KPF: double feature costs 100000 and can only be bought once", () => {
   const premiere = byId("premiere");
-  assert.equal(price(premiere, {}), 50000);
+  assert.equal(price(premiere, {}), 100000);
   assert.equal(maxFor(premiere), 1);
   const unlockedOwned = { lantern: 20 };
   assert.equal(isUnlocked(premiere, unlockedOwned), true);
-  const bought = buyUpgrade({ embers: 50000, owned: unlockedOwned }, "premiere");
+  const bought = buyUpgrade({ embers: 100000, owned: unlockedOwned }, "premiere");
   assert.equal(bought.ok, true);
   assert.equal(bought.state.owned.premiere, 1);
   assert.equal(bought.state.embers, 0);
@@ -172,4 +176,15 @@ test("KPF: enough exp increases player level", () => {
   assert.equal(leveled.level, 2);
   assert.equal(leveled.leveledUp, true);
   assert.equal(leveled.exp, 0);
+});
+
+test("KPF: satchel inventory holds 25 empty slots and no items yet", () => {
+  assert.equal(INVENTORY_SIZE, 25);
+  const bag = createEmptyInventory();
+  assert.equal(bag.length, 25);
+  assert.equal(inventoryUsed(bag), 0);
+  assert.ok(bag.every((slot) => slot === null));
+  const normalized = normalizeInventory([null, null]);
+  assert.equal(normalized.length, 25);
+  assert.equal(inventoryUsed(normalized), 0);
 });

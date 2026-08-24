@@ -9,22 +9,42 @@
 
   // Shop order: clerk → season pass → queue runners → box office → double feature
   const upgrades = [
-    { id: "lantern", icon: "▣", name: "Ticket clerk", note: "+1 ticket / second", baseCost: 50, cps: 1 },
-    { id: "roots", icon: "◈", name: "Season pass", note: "+1 ticket / click", baseCost: 225, click: 1 },
-    { id: "moth", icon: "♢", name: "Queue runners", note: "+5 tickets / second", baseCost: 900, cps: 5 },
-    { id: "grove", icon: "▤", name: "Box office", note: "+25 tickets / second", baseCost: 4750, cps: 25 },
+    { id: "lantern", icon: "▣", name: "Ticket clerk", note: "+1 ticket / second", baseCost: 25, cps: 1 },
+    { id: "roots", icon: "◈", name: "Season pass", note: "+1 ticket / click", baseCost: 112, click: 1 },
+    { id: "moth", icon: "♢", name: "Queue runners", note: "+5 tickets / second", baseCost: 450, cps: 5 },
+    { id: "grove", icon: "▤", name: "Box office", note: "+25 tickets / second", baseCost: 2375, cps: 25 },
     {
       id: "premiere",
       icon: "★",
       name: "Double feature",
       note: "×2 all ticket earnings",
-      baseCost: 50000,
+      baseCost: 100000,
       mult: 2,
       maxOwned: 1,
       unlockAt: 20,
       reveal: "curtains",
     },
   ];
+
+  const INVENTORY_SIZE = 25;
+
+  /** Empty bag: 25 open slots, no items yet. */
+  function createEmptyInventory() {
+    return Array.from({ length: INVENTORY_SIZE }, () => null);
+  }
+
+  function normalizeInventory(inventory) {
+    const next = createEmptyInventory();
+    if (!Array.isArray(inventory)) return next;
+    for (let i = 0; i < INVENTORY_SIZE; i += 1) {
+      next[i] = inventory[i] == null ? null : inventory[i];
+    }
+    return next;
+  }
+
+  function inventoryUsed(inventory) {
+    return normalizeInventory(inventory).filter((slot) => slot != null).length;
+  }
 
   const count = (owned, id) => owned[id] || 0;
   const totalOwned = (owned) => upgrades.reduce((sum, upgrade) => sum + count(owned, upgrade.id), 0);
@@ -132,8 +152,12 @@
     expRequiredForLevel,
     levelProgress,
     grantExp,
+    createEmptyInventory,
+    normalizeInventory,
+    inventoryUsed,
     CLICK_EXP,
     BUY_EXP,
     MAX_OWNED,
+    INVENTORY_SIZE,
   };
 });

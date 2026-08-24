@@ -13,15 +13,47 @@
     <div class="bg-aurora" aria-hidden="true"></div>
 
     <div class="level-badge" id="level-badge" aria-label="Player level">
-      <svg class="level-ring" viewBox="0 0 76 76" aria-hidden="true">
-        <circle class="level-ring-track" cx="38" cy="38" r="32"></circle>
-        <circle class="level-ring-fill" id="level-ring-fill" cx="38" cy="38" r="32"></circle>
+      <svg class="level-ring" viewBox="0 0 88 88" aria-hidden="true">
+        <circle class="level-ring-track" cx="44" cy="44" r="37"></circle>
+        <circle class="level-ring-fill" id="level-ring-fill" cx="44" cy="44" r="37"></circle>
       </svg>
       <div class="level-badge-core">
         <span class="level-kicker">LVL</span>
         <span class="level-value" id="level-value">1</span>
       </div>
       <div class="level-exp-tip" id="level-exp-tip">0 / 12 XP</div>
+    </div>
+
+    <button type="button" class="satchel-button" id="satchel-button" aria-haspopup="dialog" aria-controls="satchel-panel" aria-expanded="false" title="Open satchel">
+      <span class="satchel-body" aria-hidden="true">
+        <span class="satchel-flap"></span>
+        <span class="satchel-buckle"></span>
+        <span class="satchel-stitch"></span>
+      </span>
+      <span class="satchel-label">Satchel</span>
+      <span class="satchel-count" id="satchel-count">0/25</span>
+    </button>
+
+    <div class="satchel-overlay" id="satchel-overlay" hidden>
+      <div class="satchel-panel" id="satchel-panel" role="dialog" aria-modal="true" aria-labelledby="satchel-title">
+        <div class="satchel-panel-shine" aria-hidden="true"></div>
+        <header class="satchel-panel-header">
+          <div>
+            <p class="satchel-kicker">Travel bag</p>
+            <h2 class="satchel-title" id="satchel-title">Satchel</h2>
+          </div>
+          <div class="satchel-header-meta">
+            <span class="satchel-capacity" id="satchel-capacity">0 / 25</span>
+            <button type="button" class="satchel-close" id="satchel-close" aria-label="Close satchel">✕</button>
+          </div>
+        </header>
+        <p class="satchel-blurb">Soft leather, twenty-five pockets. Nothing packed yet — room for whatever the booth sends your way.</p>
+        <div class="satchel-grid" id="satchel-grid" aria-label="Inventory slots"></div>
+        <footer class="satchel-footer">
+          <span>Empty for now</span>
+          <span class="satchel-footer-hint">Click the satchel again or press Esc to close</span>
+        </footer>
+      </div>
     </div>
 
     <main class="game-shell">
