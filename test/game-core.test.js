@@ -11,6 +11,11 @@ const {
   maxFor,
   totalOwned,
   earningsMultiplier,
+  expRequiredForLevel,
+  levelProgress,
+  grantExp,
+  CLICK_EXP,
+  BUY_EXP,
   MAX_OWNED,
 } = require("../game-core.js");
 
@@ -146,4 +151,25 @@ test("KPF: double feature doubles claim and passive earnings", () => {
   // base cps 2, base click 1+3=4, both doubled
   assert.equal(perSecond(owned), 4);
   assert.equal(perClick(owned), 8);
+});
+
+test("KPF: manual claims grant 1 exp and purchases grant 10 exp", () => {
+  assert.equal(CLICK_EXP, 1);
+  assert.equal(BUY_EXP, 10);
+  const click = grantExp(0, CLICK_EXP);
+  assert.equal(click.totalExp, 1);
+  assert.equal(click.level, 1);
+  const buy = grantExp(0, BUY_EXP);
+  assert.equal(buy.totalExp, 10);
+});
+
+test("KPF: enough exp increases player level", () => {
+  const need = expRequiredForLevel(1);
+  const almost = grantExp(0, need - 1);
+  assert.equal(almost.level, 1);
+  assert.equal(almost.leveledUp, false);
+  const leveled = grantExp(almost.totalExp, 1);
+  assert.equal(leveled.level, 2);
+  assert.equal(leveled.leveledUp, true);
+  assert.equal(leveled.exp, 0);
 });

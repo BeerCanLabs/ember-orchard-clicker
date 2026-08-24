@@ -11,6 +11,19 @@
   </head>
   <body>
     <div class="bg-aurora" aria-hidden="true"></div>
+
+    <div class="level-badge" id="level-badge" aria-label="Player level">
+      <svg class="level-ring" viewBox="0 0 76 76" aria-hidden="true">
+        <circle class="level-ring-track" cx="38" cy="38" r="32"></circle>
+        <circle class="level-ring-fill" id="level-ring-fill" cx="38" cy="38" r="32"></circle>
+      </svg>
+      <div class="level-badge-core">
+        <span class="level-kicker">LVL</span>
+        <span class="level-value" id="level-value">1</span>
+      </div>
+      <div class="level-exp-tip" id="level-exp-tip">0 / 12 XP</div>
+    </div>
+
     <main class="game-shell">
       <header>
         <p class="eyebrow">A tiny incremental game</p>
@@ -18,18 +31,52 @@
         <button id="reset-button" class="reset-button" title="Start over">Reset progress</button>
       </header>
 
-      <section class="stats" aria-label="Game statistics">
-        <div><span id="embers">0</span><small>tickets</small></div>
-        <div><span id="per-second">0</span><small>per second</small></div>
-        <div><span id="per-click">1</span><small>per click</small></div>
+      <section class="stats-board" aria-label="Game statistics">
+        <article class="stat-card stat-tickets">
+          <div class="stat-icon" aria-hidden="true">🎟</div>
+          <div class="stat-copy">
+            <span class="stat-label">Tickets</span>
+            <span class="stat-value" id="embers">0</span>
+          </div>
+        </article>
+        <article class="stat-card stat-rate">
+          <div class="stat-icon" aria-hidden="true">⏱</div>
+          <div class="stat-copy">
+            <span class="stat-label">Per second</span>
+            <span class="stat-value" id="per-second">0</span>
+          </div>
+        </article>
+        <article class="stat-card stat-click">
+          <div class="stat-icon" aria-hidden="true">👆</div>
+          <div class="stat-copy">
+            <span class="stat-label">Per claim</span>
+            <span class="stat-value" id="per-click">1</span>
+          </div>
+        </article>
+        <article class="stat-card stat-xp">
+          <div class="stat-icon" aria-hidden="true">✦</div>
+          <div class="stat-copy">
+            <span class="stat-label">XP to next</span>
+            <span class="stat-value" id="xp-to-next">12</span>
+          </div>
+        </article>
       </section>
 
       <section class="play-area">
         <div class="orchard-wrap">
-          <button id="orchard-button" class="orchard-button" aria-label="Claim a ticket">
-            <span class="tree tree-one">≡</span><span class="tree tree-two">≡</span><span class="tree tree-three">≡</span>
-            <span class="orb">🎟</span>
-            <span class="button-label">claim</span>
+          <button id="orchard-button" class="claim-pad" aria-label="Claim a ticket">
+            <span class="claim-glow" aria-hidden="true"></span>
+            <span class="claim-ticket" aria-hidden="true">
+              <span class="claim-ticket-notch claim-ticket-notch-left"></span>
+              <span class="claim-ticket-notch claim-ticket-notch-right"></span>
+              <span class="claim-ticket-stub">ADMIT</span>
+              <span class="claim-ticket-main">
+                <span class="claim-ticket-mark">🎟</span>
+                <span class="claim-ticket-title">TICKET</span>
+                <span class="claim-ticket-sub">PRESS TO CLAIM</span>
+              </span>
+            </span>
+            <span class="claim-label">claim +1 XP</span>
           </button>
           <p class="hint">Every stub counts toward the show.</p>
         </div>

@@ -4,6 +4,8 @@
   root.GameCore = core;
 })(typeof window !== "undefined" ? window : globalThis, () => {
   const MAX_OWNED = 50;
+  const CLICK_EXP = 1;
+  const BUY_EXP = 10;
 
   // Shop order: clerk → season pass → queue runners → box office → double feature
   const upgrades = [
@@ -50,6 +52,46 @@
   const perSecond = (owned) => basePerSecond(owned) * earningsMultiplier(owned);
   const perClick = (owned) => basePerClick(owned) * earningsMultiplier(owned);
 
+  /** EXP needed to advance from `level` → `level + 1` (level is 1-based). */
+  function expRequiredForLevel(level) {
+    const safe = Math.max(1, Math.floor(level || 1));
+    return Math.floor(12 * Math.pow(1.32, safe - 1));
+  }
+
+  /** Derive level progress from lifetime EXP. */
+  function levelProgress(totalExp) {
+    let remaining = Math.max(0, Math.floor(Number(totalExp) || 0));
+    let level = 1;
+    // Cap iterations so pathological values can't hang.
+    for (let i = 0; i < 10000; i += 1) {
+      const need = expRequiredForLevel(level);
+      if (remaining < need) {
+        return {
+          level,
+          exp: remaining,
+          next: need,
+          totalExp: Math.max(0, Math.floor(Number(totalExp) || 0)),
+          ratio: need === 0 ? 0 : remaining / need,
+        };
+      }
+      remaining -= need;
+      level += 1;
+    }
+    return { level, exp: remaining, next: expRequiredForLevel(level), totalExp: remaining, ratio: 0 };
+  }
+
+  function grantExp(totalExp, amount) {
+    const before = levelProgress(totalExp);
+    const afterTotal = before.totalExp + Math.max(0, Math.floor(amount || 0));
+    const after = levelProgress(afterTotal);
+    return {
+      ...after,
+      gained: Math.max(0, Math.floor(amount || 0)),
+      leveledUp: after.level > before.level,
+      levelsGained: after.level - before.level,
+    };
+  }
+
   /** Pure purchase attempt. Never mutates input. */
   function buyUpgrade(state, upgradeId) {
     const upgrade = upgrades.find((entry) => entry.id === upgradeId);
@@ -67,6 +109,7 @@
       ok: true,
       cost,
       upgrade,
+      expGained: BUY_EXP,
       state: {
         embers: state.embers - cost,
         owned: { ...state.owned, [upgradeId]: ownedCount + 1 },
@@ -86,6 +129,11 @@
     isUnlocked,
     maxFor,
     earningsMultiplier,
+    expRequiredForLevel,
+    levelProgress,
+    grantExp,
+    CLICK_EXP,
+    BUY_EXP,
     MAX_OWNED,
   };
 });
