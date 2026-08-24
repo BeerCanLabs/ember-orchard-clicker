@@ -648,6 +648,150 @@ h1 {
   .shop-columns { display: none; }
 }
 
+/* ── Premiere curtains (Double feature reveal) ───────── */
+.upgrade-slot {
+  position: relative;
+  border-radius: 14px;
+}
+
+.curtain-stage {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  min-height: 88px;
+}
+
+.upgrade-slot .upgrade {
+  position: relative;
+  z-index: 1;
+}
+
+.upgrade-slot.is-locked .upgrade {
+  filter: blur(1px) brightness(0.55);
+  pointer-events: none;
+}
+
+.curtain-valance {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 14px;
+  z-index: 5;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      #6b1528 0 14px,
+      #8a1d34 14px 28px
+    );
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+  border-radius: 14px 14px 0 0;
+  pointer-events: none;
+}
+
+.curtain {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 52%;
+  z-index: 4;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      #7a1830 0 10px,
+      #5c1024 10px 12px,
+      #8f2040 12px 22px
+    );
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.45);
+  transition: transform 1.25s cubic-bezier(0.55, 0.05, 0.2, 1);
+}
+
+.curtain-left {
+  left: 0;
+  border-radius: 14px 0 0 14px;
+  transform-origin: left center;
+  box-shadow:
+    inset -8px 0 16px rgba(0, 0, 0, 0.35),
+    4px 0 12px rgba(0, 0, 0, 0.35);
+}
+
+.curtain-right {
+  right: 0;
+  border-radius: 0 14px 14px 0;
+  transform-origin: right center;
+  box-shadow:
+    inset 8px 0 16px rgba(0, 0, 0, 0.35),
+    -4px 0 12px rgba(0, 0, 0, 0.35);
+}
+
+.curtain-lock-label {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 12px;
+  font-size: 12px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #ffd7c4;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.75);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.upgrade-slot.is-locked .curtain-lock-label {
+  opacity: 1;
+}
+
+.upgrade-slot.is-locked .curtain-left,
+.upgrade-slot.is-locked .curtain-right {
+  transform: translateX(0);
+}
+
+.upgrade-slot.is-opening .curtain-lock-label,
+.upgrade-slot.is-open .curtain-lock-label {
+  opacity: 0;
+}
+
+.upgrade-slot.is-opening .curtain-left {
+  transform: translateX(-102%);
+}
+
+.upgrade-slot.is-opening .curtain-right {
+  transform: translateX(102%);
+}
+
+.upgrade-slot.is-open .curtain-left {
+  transform: translateX(-102%);
+}
+
+.upgrade-slot.is-open .curtain-right {
+  transform: translateX(102%);
+}
+
+.upgrade-slot.is-open .curtain,
+.upgrade-slot.is-open .curtain-valance {
+  pointer-events: none;
+}
+
+.upgrade-special {
+  border-color: #8a4a28;
+  background: linear-gradient(180deg, #3a2418 0%, #241410 100%);
+  box-shadow: 3px 4px 0 #0a0610, 0 0 18px rgba(255, 138, 76, 0.12);
+}
+
+.upgrade-special .upgrade-icon {
+  border-color: #a86a30;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 210, 120, 0.28), transparent 55%),
+    #1a100c;
+  color: #ffd27a;
+}
+
 .upgrade.celebrate {
   animation: celebrate-pop 0.55s cubic-bezier(0.2, 1.4, 0.3, 1);
   border-color: var(--orange);
@@ -677,6 +821,10 @@ h1 {
   .bg-aurora,
   .bg-aurora::after {
     animation: none;
+  }
+
+  .curtain {
+    transition: none;
   }
 
   .upgrade,
