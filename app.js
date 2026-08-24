@@ -8,6 +8,10 @@ const {
   isUnlocked,
   maxFor,
   totalOwned,
+  levelProgress,
+  grantExp,
+  CLICK_EXP,
+  BUY_EXP,
   MAX_OWNED,
 } = window.GameCore;
 
@@ -15,6 +19,7 @@ const saved = JSON.parse(localStorage.getItem("ember-orchard-save") || "{}");
 const state = {
   embers: Number(saved.embers) || 0,
   owned: saved.owned && typeof saved.owned === "object" ? saved.owned : {},
+  exp: Number(saved.exp) || 0,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -22,10 +27,12 @@ const format = (number) => Math.floor(number).toLocaleString();
 const prefersReducedMotion = () =>
   window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+const LEVEL_RING_CIRCUMFERENCE = 2 * Math.PI * 32;
+
 function save() {
   localStorage.setItem(
     "ember-orchard-save",
-    JSON.stringify({ embers: state.embers, owned: state.owned })
+    JSON.stringify({ embers: state.embers, owned: state.owned, exp: state.exp })
   );
 }
 
@@ -174,7 +181,6 @@ function updateUpgradeButtons() {
               : `${remaining} more upgrade${remaining === 1 ? "" : "s"} to open`;
         }
       } else if (!slot.classList.contains("is-open") && !slot.classList.contains("is-opening")) {
-        // First time we see it unlocked: animate only if we already finished initial mount.
         const animate = slot.dataset.ready === "1" && slot.dataset.seenOpen !== "1";
         revealCurtains(slot, animate);
         slot.dataset.seenOpen = "1";
@@ -218,17 +224,65 @@ function updateUpgradeButtons() {
   }
 }
 
+function pulseLevelBadge(leveledUp) {
+  const badge = $("level-badge");
+  if (!badge) return;
+  badge.classList.remove("is-gain", "is-level-up");
+  void badge.offsetWidth;
+  badge.classList.add(leveledUp ? "is-level-up" : "is-gain");
+  window.setTimeout(() => badge.classList.remove("is-gain", "is-level-up"), leveledUp ? 900 : 420);
+}
+
+function renderLevel() {
+  const progress = levelProgress(state.exp);
+  $("level-value").textContent = String(progress.level);
+  $("level-exp-tip").textContent = `${format(progress.exp)} / ${format(progress.next)} XP`;
+  $("xp-to-next").textContent = format(Math.max(0, progress.next - progress.exp));
+
+  const ring = $("level-ring-fill");
+  if (ring) {
+    const offset = LEVEL_RING_CIRCUMFERENCE * (1 - Math.min(1, Math.max(0, progress.ratio)));
+    ring.style.strokeDasharray = `${LEVEL_RING_CIRCUMFERENCE}`;
+    ring.style.strokeDashoffset = `${offset}`;
+  }
+
+  const badge = $("level-badge");
+  if (badge) {
+    badge.setAttribute(
+      "aria-label",
+      `Level ${progress.level}, ${progress.exp} of ${progress.next} experience`
+    );
+  }
+
+  return progress;
+}
+
+function applyExp(amount) {
+  const result = grantExp(state.exp, amount);
+  state.exp = result.totalExp;
+  renderLevel();
+  pulseLevelBadge(result.leveledUp);
+  if (result.leveledUp) {
+    $("status").textContent = `Level up! You reached level ${result.level}.`;
+  }
+  return result;
+}
+
 function render() {
   $("embers").textContent = format(state.embers);
   $("per-second").textContent = format(perSecond(state.owned));
   $("per-click").textContent = format(perClick(state.owned));
   $("owned-count").textContent = `${totalOwned(state.owned)} owned`;
+  renderLevel();
   updateUpgradeButtons();
 }
 
 function gather(event) {
+  playPress($("orchard-button"));
   const gain = perClick(state.owned);
   state.embers += gain;
+  applyExp(CLICK_EXP);
+
   const bubble = document.createElement("span");
   bubble.className = "float";
   bubble.textContent = `+${format(gain)}`;
@@ -236,13 +290,21 @@ function gather(event) {
   bubble.style.top = `${event.clientY - 10}px`;
   document.body.appendChild(bubble);
   setTimeout(() => bubble.remove(), 750);
+
+  const xpBubble = document.createElement("span");
+  xpBubble.className = "float float-xp";
+  xpBubble.textContent = `+${CLICK_EXP} XP`;
+  xpBubble.style.left = `${event.clientX + 10}px`;
+  xpBubble.style.top = `${event.clientY + 8}px`;
+  document.body.appendChild(xpBubble);
+  setTimeout(() => xpBubble.remove(), 750);
+
   render();
   save();
 }
 
 function playPress(button) {
   button.classList.remove("is-pressed");
-  // Force reflow so rapid clicks retrigger the press class cleanly.
   void button.offsetWidth;
   button.classList.add("is-pressed");
   window.setTimeout(() => button.classList.remove("is-pressed"), 120);
@@ -263,7 +325,6 @@ const CONFETTI_COLORS = [
 
 const CONFETTI_SHAPES = ["", "is-circle", "is-strip", "is-diamond"];
 
-/** Colorful confetti burst originating at the mouse / pointer position. */
 function burstConfetti(originX, originY) {
   const count = 28;
   for (let i = 0; i < count; i += 1) {
@@ -275,7 +336,6 @@ function burstConfetti(originX, originY) {
     piece.style.setProperty("--color", CONFETTI_COLORS[i % CONFETTI_COLORS.length]);
     piece.style.setProperty("--size", `${5 + (i % 5) * 2}px`);
 
-    // Mostly upward fan with gravity-ish drop, seeded by index for variety.
     const angle = -Math.PI * 0.15 - Math.random() * Math.PI * 0.7 + (i / count - 0.5) * 0.9;
     const speed = 70 + Math.random() * 120;
     const dx = Math.cos(angle) * speed * (0.55 + Math.random() * 0.7);
@@ -301,7 +361,7 @@ function celebratePurchase(button, upgrade, originX, originY) {
   button.classList.add("celebrate");
   window.setTimeout(() => button.classList.remove("celebrate"), 560);
 
-  const stats = document.querySelector(".stats");
+  const stats = document.querySelector(".stats-board");
   if (stats) {
     stats.classList.remove("celebrate");
     void stats.offsetWidth;
@@ -326,10 +386,13 @@ function purchase(upgradeId, button, originX, originY) {
   if (!result.ok) return false;
   state.embers = result.state.embers;
   state.owned = result.state.owned;
-  if (result.upgrade.mult) {
-    $("status").textContent = `${result.upgrade.name} doubles every ticket!`;
-  } else {
-    $("status").textContent = `${result.upgrade.name} joined the booth.`;
+  const expResult = applyExp(result.expGained || BUY_EXP);
+  if (!expResult.leveledUp) {
+    if (result.upgrade.mult) {
+      $("status").textContent = `${result.upgrade.name} doubles every ticket! (+${BUY_EXP} XP)`;
+    } else {
+      $("status").textContent = `${result.upgrade.name} joined the booth. (+${BUY_EXP} XP)`;
+    }
   }
   if (button) celebratePurchase(button, result.upgrade, originX, originY);
   render();
@@ -339,7 +402,6 @@ function purchase(upgradeId, button, originX, originY) {
 
 $("orchard-button").addEventListener("click", gather);
 
-// Stable delegated handler on a container whose children are not destroyed each tick.
 $("upgrades").addEventListener("pointerdown", (event) => {
   const button = event.target.closest("button[data-id]");
   if (!button || button.disabled) return;
@@ -356,8 +418,8 @@ $("reset-button").addEventListener("click", () => {
   if (!confirm("Reset all ticket booth progress?")) return;
   state.embers = 0;
   state.owned = {};
+  state.exp = 0;
   $("status").textContent = "A fresh booth awaits.";
-  // Reset curtain slots so they can lock and re-reveal.
   for (const slot of $("upgrades").querySelectorAll(".upgrade-slot")) {
     slot.classList.remove("is-open", "is-opening");
     slot.classList.add("is-locked", "is-curtained");

@@ -16,6 +16,8 @@ Each KPF below is a user-visible promise. Its automated test must continue to pa
 | Rapid purchase consistency | Repeated upgrade clicks while funded apply in sequence without lost or double-spent purchases. | `rapid successive purchases remain consistent` |
 | Ownership cap | Standard upgrades can be bought at most **50** times; further buys are rejected as maxed. | `standard upgrades can be owned at most 50 times`, `ownership just under the cap can still buy once` |
 | Double feature | Costs **50,000**, unlocks after **20** total upgrades owned, purchasable once, doubles all earnings. | `double feature costs 50000 and can only be bought once`, `double feature stays locked until 20 total upgrades are owned`, `double feature doubles claim and passive earnings` |
+| Experience | Manual **claim** grants **1 XP**; buying an upgrade grants **10 XP**. | `manual claims grant 1 exp and purchases grant 10 exp` |
+| Leveling | Accumulated XP raises player level; the top-left ring shows progress to the next level. | `enough exp increases player level` |
 
 ## Test command
 
@@ -28,3 +30,7 @@ The shop must **not** destroy/recreate upgrade buttons on the passive income tic
 ## UI note (double feature reveal)
 
 **Double feature** stays behind closed movie curtains until 20 upgrades are owned. Crossing that threshold plays a curtain-opening reveal (skipped when `prefers-reduced-motion` is set).
+
+## UI note (level badge)
+
+Player level is shown as a fixed circle in the **top-left**, with a ring filling toward the next level.
