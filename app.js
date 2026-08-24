@@ -29,19 +29,48 @@ function mountUpgrades() {
     const icon = document.createElement("span");
     icon.className = "upgrade-icon";
     icon.textContent = upgrade.icon;
+    icon.setAttribute("aria-hidden", "true");
 
-    const body = document.createElement("span");
+    const info = document.createElement("span");
+    info.className = "upgrade-info";
+
+    const heading = document.createElement("span");
+    heading.className = "upgrade-heading";
+
     const title = document.createElement("strong");
     title.dataset.role = "title";
+    title.textContent = upgrade.name;
+
+    const owned = document.createElement("span");
+    owned.className = "owned-badge is-empty";
+    owned.dataset.role = "owned";
+    owned.textContent = "×0";
+
+    heading.append(title, owned);
+
     const note = document.createElement("small");
     note.textContent = upgrade.note;
-    body.append(title, note);
 
-    const cost = document.createElement("span");
-    cost.className = "cost";
-    cost.dataset.role = "cost";
+    info.append(heading, note);
 
-    button.append(icon, body, cost);
+    const priceTag = document.createElement("span");
+    priceTag.className = "price-tag";
+
+    const priceLabel = document.createElement("span");
+    priceLabel.className = "price-label";
+    priceLabel.textContent = "Price";
+
+    const priceValue = document.createElement("span");
+    priceValue.className = "price-value";
+    priceValue.dataset.role = "cost";
+
+    const buyLabel = document.createElement("span");
+    buyLabel.className = "buy-label";
+    buyLabel.dataset.role = "buy";
+    buyLabel.textContent = "Buy";
+
+    priceTag.append(priceLabel, priceValue, buyLabel);
+    button.append(icon, info, priceTag);
     list.append(button);
   }
 }
@@ -52,11 +81,20 @@ function updateUpgradeButtons() {
     if (!button) continue;
     const cost = price(upgrade, state.owned);
     const owned = state.owned[upgrade.id] || 0;
-    button.disabled = state.embers < cost;
-    button.querySelector('[data-role="title"]').textContent = owned
-      ? `${upgrade.name} ×${owned}`
-      : upgrade.name;
-    button.querySelector('[data-role="cost"]').textContent = `${format(cost)} ✹`;
+    const canAfford = state.embers >= cost;
+    button.disabled = !canAfford;
+
+    button.querySelector('[data-role="title"]').textContent = upgrade.name;
+
+    const ownedBadge = button.querySelector('[data-role="owned"]');
+    ownedBadge.textContent = `×${owned}`;
+    ownedBadge.classList.toggle("is-empty", owned === 0);
+
+    const costEl = button.querySelector('[data-role="cost"]');
+    costEl.innerHTML = `${format(cost)} <span class="ember-mark">✹</span>`;
+
+    const buyEl = button.querySelector('[data-role="buy"]');
+    buyEl.textContent = canAfford ? "Buy" : "Need more";
   }
 }
 
