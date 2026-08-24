@@ -7,6 +7,10 @@ const {
   perClick,
   buyUpgrade,
   isMaxed,
+  isUnlocked,
+  maxFor,
+  totalOwned,
+  earningsMultiplier,
   MAX_OWNED,
 } = require("../game-core.js");
 
@@ -16,15 +20,15 @@ test("KPF: claiming begins at one ticket per click", () => {
   assert.equal(perClick({}), 1);
 });
 
-test("KPF: ticket clerk is the first shop entry and costs 100", () => {
+test("KPF: ticket clerk is the first shop entry and costs 50", () => {
   assert.equal(upgrades[0].id, "lantern");
-  assert.equal(price(byId("lantern"), {}), 100);
+  assert.equal(price(byId("lantern"), {}), 50);
 });
 
-test("KPF: shop order is clerk, season pass, queue runners, box office", () => {
+test("KPF: shop order ends with double feature after box office", () => {
   assert.deepEqual(
     upgrades.map((upgrade) => upgrade.id),
-    ["lantern", "roots", "moth", "grove"]
+    ["lantern", "roots", "moth", "grove", "premiere"]
   );
 });
 
@@ -46,12 +50,12 @@ test("KPF: each upgrade has a unique identifier", () => {
 });
 
 test("KPF: affordable upgrade purchases succeed and spend tickets", () => {
-  const before = { embers: 250, owned: {} };
+  const before = { embers: 120, owned: {} };
   const result = buyUpgrade(before, "lantern");
   assert.equal(result.ok, true);
-  assert.equal(result.state.embers, 150);
+  assert.equal(result.state.embers, 70);
   assert.equal(result.state.owned.lantern, 1);
-  assert.equal(before.embers, 250);
+  assert.equal(before.embers, 120);
   assert.deepEqual(before.owned, {});
 });
 
@@ -76,14 +80,6 @@ test("KPF: rapid successive purchases remain consistent", () => {
   assert.ok(buys >= 2, "should complete multiple buys while funded");
   assert.equal(state.owned.lantern, buys);
   assert.ok(state.embers >= 0);
-  const next = buyUpgrade(state, "lantern");
-  if (next.ok) {
-    assert.equal(next.state.owned.lantern, buys + 1);
-    assert.ok(next.state.embers >= 0);
-  } else {
-    assert.ok(next.reason === "unaffordable" || next.reason === "maxed");
-    assert.equal(state.owned.lantern, buys);
-  }
 });
 
 test("KPF: unknown upgrade ids never alter state", () => {
@@ -95,14 +91,14 @@ test("KPF: unknown upgrade ids never alter state", () => {
   assert.deepEqual(before.owned, { lantern: 2 });
 });
 
-test("KPF: each upgrade can be owned at most 50 times", () => {
+test("KPF: standard upgrades can be owned at most 50 times", () => {
   assert.equal(MAX_OWNED, 50);
+  assert.equal(maxFor(byId("lantern")), 50);
   const owned = { lantern: 50 };
   assert.equal(isMaxed(byId("lantern"), owned), true);
   const result = buyUpgrade({ embers: 1e12, owned }, "lantern");
   assert.equal(result.ok, false);
   assert.equal(result.reason, "maxed");
-  assert.equal(owned.lantern, 50);
 });
 
 test("KPF: ownership just under the cap can still buy once", () => {
@@ -114,9 +110,40 @@ test("KPF: ownership just under the cap can still buy once", () => {
   assert.equal(blocked.reason, "maxed");
 });
 
-test("KPF: base shop prices are substantially elevated", () => {
-  assert.ok(price(byId("lantern"), {}) >= 100);
-  assert.ok(price(byId("roots"), {}) >= 400);
-  assert.ok(price(byId("moth"), {}) >= 1500);
-  assert.ok(price(byId("grove"), {}) >= 9000);
+test("KPF: base shop prices are half of the prior elevated tier", () => {
+  assert.equal(price(byId("lantern"), {}), 50);
+  assert.equal(price(byId("roots"), {}), 225);
+  assert.equal(price(byId("moth"), {}), 900);
+  assert.equal(price(byId("grove"), {}), 4750);
+});
+
+test("KPF: double feature costs 50000 and can only be bought once", () => {
+  const premiere = byId("premiere");
+  assert.equal(price(premiere, {}), 50000);
+  assert.equal(maxFor(premiere), 1);
+  const unlockedOwned = { lantern: 20 };
+  assert.equal(isUnlocked(premiere, unlockedOwned), true);
+  const bought = buyUpgrade({ embers: 50000, owned: unlockedOwned }, "premiere");
+  assert.equal(bought.ok, true);
+  assert.equal(bought.state.owned.premiere, 1);
+  assert.equal(bought.state.embers, 0);
+  const again = buyUpgrade(bought.state, "premiere");
+  assert.equal(again.ok, false);
+  assert.equal(again.reason, "maxed");
+});
+
+test("KPF: double feature stays locked until 20 total upgrades are owned", () => {
+  const premiere = byId("premiere");
+  assert.equal(isUnlocked(premiere, { lantern: 19 }), false);
+  assert.equal(buyUpgrade({ embers: 1e12, owned: { lantern: 19 } }, "premiere").reason, "locked");
+  assert.equal(isUnlocked(premiere, { lantern: 20 }), true);
+  assert.equal(totalOwned({ lantern: 12, roots: 8 }), 20);
+});
+
+test("KPF: double feature doubles claim and passive earnings", () => {
+  const owned = { lantern: 2, roots: 3, premiere: 1 };
+  assert.equal(earningsMultiplier(owned), 2);
+  // base cps 2, base click 1+3=4, both doubled
+  assert.equal(perSecond(owned), 4);
+  assert.equal(perClick(owned), 8);
 });

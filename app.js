@@ -1,4 +1,15 @@
-const { upgrades, price, perSecond, perClick, buyUpgrade, isMaxed, MAX_OWNED } = window.GameCore;
+const {
+  upgrades,
+  price,
+  perSecond,
+  perClick,
+  buyUpgrade,
+  isMaxed,
+  isUnlocked,
+  maxFor,
+  totalOwned,
+  MAX_OWNED,
+} = window.GameCore;
 
 const saved = JSON.parse(localStorage.getItem("ember-orchard-save") || "{}");
 const state = {
@@ -8,6 +19,8 @@ const state = {
 
 const $ = (id) => document.getElementById(id);
 const format = (number) => Math.floor(number).toLocaleString();
+const prefersReducedMotion = () =>
+  window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function save() {
   localStorage.setItem(
@@ -16,88 +29,188 @@ function save() {
   );
 }
 
+function createUpgradeButton(upgrade) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "upgrade";
+  button.dataset.id = upgrade.id;
+  if (upgrade.reveal === "curtains") button.classList.add("upgrade-special");
+
+  const icon = document.createElement("span");
+  icon.className = "upgrade-icon";
+  icon.textContent = upgrade.icon;
+  icon.setAttribute("aria-hidden", "true");
+
+  const info = document.createElement("span");
+  info.className = "upgrade-info";
+
+  const heading = document.createElement("span");
+  heading.className = "upgrade-heading";
+
+  const title = document.createElement("strong");
+  title.dataset.role = "title";
+  title.textContent = upgrade.name;
+
+  const owned = document.createElement("span");
+  owned.className = "owned-badge is-empty";
+  owned.dataset.role = "owned";
+  owned.textContent = "×0";
+
+  heading.append(title, owned);
+
+  const note = document.createElement("small");
+  note.textContent = upgrade.note;
+
+  info.append(heading, note);
+
+  const priceTag = document.createElement("span");
+  priceTag.className = "price-tag";
+
+  const priceLabel = document.createElement("span");
+  priceLabel.className = "price-label";
+  priceLabel.textContent = "Price";
+
+  const priceValue = document.createElement("span");
+  priceValue.className = "price-value";
+  priceValue.dataset.role = "cost";
+
+  const buyLabel = document.createElement("span");
+  buyLabel.className = "buy-label";
+  buyLabel.dataset.role = "buy";
+  buyLabel.textContent = "Buy";
+
+  priceTag.append(priceLabel, priceValue, buyLabel);
+  button.append(icon, info, priceTag);
+  return button;
+}
+
+function createCurtainSlot(upgrade, button) {
+  const slot = document.createElement("div");
+  slot.className = "upgrade-slot is-curtained";
+  slot.dataset.id = upgrade.id;
+  slot.dataset.reveal = "curtains";
+
+  const stage = document.createElement("div");
+  stage.className = "curtain-stage";
+
+  const left = document.createElement("div");
+  left.className = "curtain curtain-left";
+  left.setAttribute("aria-hidden", "true");
+
+  const right = document.createElement("div");
+  right.className = "curtain curtain-right";
+  right.setAttribute("aria-hidden", "true");
+
+  const valance = document.createElement("div");
+  valance.className = "curtain-valance";
+  valance.setAttribute("aria-hidden", "true");
+
+  const lockedLabel = document.createElement("div");
+  lockedLabel.className = "curtain-lock-label";
+  lockedLabel.dataset.role = "lock-label";
+  lockedLabel.textContent = "Opens after 20 upgrades";
+
+  stage.append(valance, left, right, lockedLabel, button);
+  slot.append(stage);
+  return slot;
+}
+
 /** Build upgrade buttons once — never replace them on the passive tick. */
 function mountUpgrades() {
   const list = $("upgrades");
   list.replaceChildren();
   for (const upgrade of upgrades) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "upgrade";
-    button.dataset.id = upgrade.id;
-
-    const icon = document.createElement("span");
-    icon.className = "upgrade-icon";
-    icon.textContent = upgrade.icon;
-    icon.setAttribute("aria-hidden", "true");
-
-    const info = document.createElement("span");
-    info.className = "upgrade-info";
-
-    const heading = document.createElement("span");
-    heading.className = "upgrade-heading";
-
-    const title = document.createElement("strong");
-    title.dataset.role = "title";
-    title.textContent = upgrade.name;
-
-    const owned = document.createElement("span");
-    owned.className = "owned-badge is-empty";
-    owned.dataset.role = "owned";
-    owned.textContent = "×0";
-
-    heading.append(title, owned);
-
-    const note = document.createElement("small");
-    note.textContent = upgrade.note;
-
-    info.append(heading, note);
-
-    const priceTag = document.createElement("span");
-    priceTag.className = "price-tag";
-
-    const priceLabel = document.createElement("span");
-    priceLabel.className = "price-label";
-    priceLabel.textContent = "Price";
-
-    const priceValue = document.createElement("span");
-    priceValue.className = "price-value";
-    priceValue.dataset.role = "cost";
-
-    const buyLabel = document.createElement("span");
-    buyLabel.className = "buy-label";
-    buyLabel.dataset.role = "buy";
-    buyLabel.textContent = "Buy";
-
-    priceTag.append(priceLabel, priceValue, buyLabel);
-    button.append(icon, info, priceTag);
-    list.append(button);
+    const button = createUpgradeButton(upgrade);
+    if (upgrade.reveal === "curtains") {
+      list.append(createCurtainSlot(upgrade, button));
+    } else {
+      list.append(button);
+    }
   }
 }
 
+function revealCurtains(slot, animate) {
+  if (!slot || slot.classList.contains("is-open") || slot.classList.contains("is-opening")) return;
+  slot.classList.remove("is-locked");
+  if (!animate || prefersReducedMotion()) {
+    slot.classList.add("is-open");
+    return;
+  }
+  slot.classList.add("is-opening");
+  $("status").textContent = "The premiere curtains part…";
+  window.setTimeout(() => {
+    slot.classList.remove("is-opening");
+    slot.classList.add("is-open");
+  }, 1400);
+}
+
 function updateUpgradeButtons() {
+  const ownedTotal = totalOwned(state.owned);
+
   for (const upgrade of upgrades) {
     const button = $("upgrades").querySelector(`button[data-id="${upgrade.id}"]`);
     if (!button) continue;
+
+    const slot = button.closest(".upgrade-slot");
+    const unlocked = isUnlocked(upgrade, state.owned);
     const cost = price(upgrade, state.owned);
     const owned = state.owned[upgrade.id] || 0;
+    const cap = maxFor(upgrade);
     const maxed = isMaxed(upgrade, state.owned);
-    const canAfford = !maxed && state.embers >= cost;
+    const canAfford = unlocked && !maxed && state.embers >= cost;
+
+    if (slot) {
+      if (!unlocked) {
+        slot.classList.add("is-locked");
+        slot.classList.remove("is-open", "is-opening");
+        slot.dataset.ready = "1";
+        delete slot.dataset.seenOpen;
+        const lockLabel = slot.querySelector('[data-role="lock-label"]');
+        if (lockLabel) {
+          const remaining = Math.max(0, (upgrade.unlockAt || 0) - ownedTotal);
+          lockLabel.textContent =
+            remaining <= 0
+              ? "Opens after 20 upgrades"
+              : `${remaining} more upgrade${remaining === 1 ? "" : "s"} to open`;
+        }
+      } else if (!slot.classList.contains("is-open") && !slot.classList.contains("is-opening")) {
+        // First time we see it unlocked: animate only if we already finished initial mount.
+        const animate = slot.dataset.ready === "1" && slot.dataset.seenOpen !== "1";
+        revealCurtains(slot, animate);
+        slot.dataset.seenOpen = "1";
+        slot.dataset.ready = "1";
+      } else {
+        slot.classList.remove("is-locked");
+        slot.dataset.ready = "1";
+      }
+    }
+
     button.disabled = !canAfford;
     button.classList.toggle("is-maxed", maxed);
+    button.classList.toggle("is-locked", !unlocked);
+    button.setAttribute("aria-hidden", unlocked ? "false" : "true");
 
     button.querySelector('[data-role="title"]').textContent = upgrade.name;
 
     const ownedBadge = button.querySelector('[data-role="owned"]');
-    ownedBadge.textContent = maxed ? `MAX ${MAX_OWNED}` : `×${owned}`;
+    if (maxed && cap === 1) {
+      ownedBadge.textContent = "OWNED";
+    } else if (maxed) {
+      ownedBadge.textContent = `MAX ${cap}`;
+    } else {
+      ownedBadge.textContent = `×${owned}`;
+    }
     ownedBadge.classList.toggle("is-empty", owned === 0 && !maxed);
     ownedBadge.classList.toggle("is-max", maxed);
 
     const costEl = button.querySelector('[data-role="cost"]');
     const buyEl = button.querySelector('[data-role="buy"]');
-    if (maxed) {
+    if (!unlocked) {
+      costEl.textContent = "???";
+      buyEl.textContent = "Locked";
+    } else if (maxed) {
       costEl.textContent = "—";
-      buyEl.textContent = "Maxed";
+      buyEl.textContent = cap === 1 ? "Owned" : "Maxed";
     } else {
       costEl.innerHTML = `${format(cost)} <span class="ember-mark">🎟</span>`;
       buyEl.textContent = canAfford ? "Buy" : "Need more";
@@ -109,7 +222,7 @@ function render() {
   $("embers").textContent = format(state.embers);
   $("per-second").textContent = format(perSecond(state.owned));
   $("per-click").textContent = format(perClick(state.owned));
-  $("owned-count").textContent = `${Object.values(state.owned).reduce((a, b) => a + b, 0)} owned`;
+  $("owned-count").textContent = `${totalOwned(state.owned)} owned`;
   updateUpgradeButtons();
 }
 
@@ -163,7 +276,7 @@ function burstConfetti(originX, originY) {
     piece.style.setProperty("--size", `${5 + (i % 5) * 2}px`);
 
     // Mostly upward fan with gravity-ish drop, seeded by index for variety.
-    const angle = (-Math.PI * 0.15) - Math.random() * Math.PI * 0.7 + (i / count - 0.5) * 0.9;
+    const angle = -Math.PI * 0.15 - Math.random() * Math.PI * 0.7 + (i / count - 0.5) * 0.9;
     const speed = 70 + Math.random() * 120;
     const dx = Math.cos(angle) * speed * (0.55 + Math.random() * 0.7);
     const dy = Math.sin(angle) * speed - (40 + Math.random() * 50);
@@ -213,7 +326,11 @@ function purchase(upgradeId, button, originX, originY) {
   if (!result.ok) return false;
   state.embers = result.state.embers;
   state.owned = result.state.owned;
-  $("status").textContent = `${result.upgrade.name} joined the booth.`;
+  if (result.upgrade.mult) {
+    $("status").textContent = `${result.upgrade.name} doubles every ticket!`;
+  } else {
+    $("status").textContent = `${result.upgrade.name} joined the booth.`;
+  }
   if (button) celebratePurchase(button, result.upgrade, originX, originY);
   render();
   save();
@@ -240,6 +357,13 @@ $("reset-button").addEventListener("click", () => {
   state.embers = 0;
   state.owned = {};
   $("status").textContent = "A fresh booth awaits.";
+  // Reset curtain slots so they can lock and re-reveal.
+  for (const slot of $("upgrades").querySelectorAll(".upgrade-slot")) {
+    slot.classList.remove("is-open", "is-opening");
+    slot.classList.add("is-locked", "is-curtained");
+    delete slot.dataset.seenOpen;
+    slot.dataset.ready = "1";
+  }
   render();
   save();
 });
