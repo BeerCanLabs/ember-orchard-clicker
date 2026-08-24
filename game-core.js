@@ -6,6 +6,9 @@
   const MAX_OWNED = 50;
   const CLICK_EXP = 1;
   const BUY_EXP = 10;
+  const INVENTORY_SIZE = 25;
+  const MAX_ITEM_STACK = 4;
+  const HELMET_CPS_BONUS = 0.1;
 
   // Shop order: clerk → season pass → queue runners → box office → double feature
   const upgrades = [
@@ -21,14 +24,21 @@
       baseCost: 100000,
       mult: 2,
       maxOwned: 1,
-      unlockAt: 20,
+      unlockAtLevel: 10,
       reveal: "curtains",
     },
   ];
 
-  const INVENTORY_SIZE = 25;
+  const ITEMS = [
+    { id: "dice", icon: "🎲", name: "Dice", weight: 32 },
+    { id: "cards", icon: "🂠", name: "Cards", weight: 32 },
+    { id: "pictures", icon: "🖼", name: "Pictures", weight: 32 },
+    { id: "helmet", icon: "⛑", name: "Iron Helmet", weight: 4 },
+  ];
 
-  /** Empty bag: 25 open slots, no items yet. */
+  const itemById = (id) => ITEMS.find((item) => item.id === id);
+
+  /** Empty bag: 25 open slots. */
   function createEmptyInventory() {
     return Array.from({ length: INVENTORY_SIZE }, () => null);
   }
@@ -37,7 +47,18 @@
     const next = createEmptyInventory();
     if (!Array.isArray(inventory)) return next;
     for (let i = 0; i < INVENTORY_SIZE; i += 1) {
-      next[i] = inventory[i] == null ? null : inventory[i];
+      const slot = inventory[i];
+      if (slot == null || typeof slot !== "object") {
+        next[i] = null;
+        continue;
+      }
+      const def = itemById(slot.id);
+      if (!def) {
+        next[i] = null;
+        continue;
+      }
+      const qty = Math.min(MAX_ITEM_STACK, Math.max(1, Math.floor(Number(slot.qty) || 1)));
+      next[i] = { id: def.id, icon: def.icon, name: def.name, qty };
     }
     return next;
   }
@@ -46,14 +67,75 @@
     return normalizeInventory(inventory).filter((slot) => slot != null).length;
   }
 
+  function inventoryHasItem(inventory, itemId) {
+    return normalizeInventory(inventory).some((slot) => slot && slot.id === itemId);
+  }
+
+  function inventoryCpsMultiplier(inventory) {
+    // Iron Helmet: +10% tickets/sec, does not stack with multiple helmets.
+    return inventoryHasItem(inventory, "helmet") ? 1 + HELMET_CPS_BONUS : 1;
+  }
+
+  /** Add one item, stacking up to MAX_ITEM_STACK per pocket. Pure. */
+  function addItemToInventory(inventory, itemId) {
+    const def = itemById(itemId);
+    if (!def) return { ok: false, reason: "unknown", inventory: normalizeInventory(inventory) };
+    const next = normalizeInventory(inventory).map((slot) => (slot ? { ...slot } : null));
+
+    for (let i = 0; i < next.length; i += 1) {
+      if (next[i] && next[i].id === itemId && next[i].qty < MAX_ITEM_STACK) {
+        next[i] = { ...next[i], qty: next[i].qty + 1 };
+        return { ok: true, reason: "stacked", inventory: next, index: i, item: next[i] };
+      }
+    }
+
+    for (let i = 0; i < next.length; i += 1) {
+      if (!next[i]) {
+        next[i] = { id: def.id, icon: def.icon, name: def.name, qty: 1 };
+        return { ok: true, reason: "placed", inventory: next, index: i, item: next[i] };
+      }
+    }
+
+    return { ok: false, reason: "full", inventory: next };
+  }
+
+  /** Weighted random item. Helmet is intentionally rare. */
+  function rollMilestoneItem(random = Math.random) {
+    const total = ITEMS.reduce((sum, item) => sum + item.weight, 0);
+    let ticket = random() * total;
+    for (const item of ITEMS) {
+      ticket -= item.weight;
+      if (ticket <= 0) return item.id;
+    }
+    return ITEMS[0].id;
+  }
+
+  function isMilestoneLevel(level) {
+    return level > 0 && level % 5 === 0;
+  }
+
+  /** Which flair animation to play for a 5-level milestone (cycles). */
+  function milestoneAnimation(level) {
+    const variants = ["gold-shower", "star-nova", "ring-wave", "prism-burst"];
+    const index = Math.max(0, Math.floor(level / 5) - 1) % variants.length;
+    return variants[index];
+  }
+
   const count = (owned, id) => owned[id] || 0;
   const totalOwned = (owned) => upgrades.reduce((sum, upgrade) => sum + count(owned, upgrade.id), 0);
   const maxFor = (upgrade) => upgrade.maxOwned ?? MAX_OWNED;
   const isMaxed = (upgrade, owned) => count(owned, upgrade.id) >= maxFor(upgrade);
-  const isUnlocked = (upgrade, owned) => {
-    if (!upgrade.unlockAt) return true;
+
+  /** context: { level } for level-gated unlocks */
+  const isUnlocked = (upgrade, owned, context = {}) => {
     if (count(owned, upgrade.id) > 0) return true;
-    return totalOwned(owned) >= upgrade.unlockAt;
+    if (upgrade.unlockAtLevel != null) {
+      return (context.level || 1) >= upgrade.unlockAtLevel;
+    }
+    if (upgrade.unlockAt != null) {
+      return totalOwned(owned) >= upgrade.unlockAt;
+    }
+    return true;
   };
 
   const price = (upgrade, owned) => {
@@ -69,7 +151,8 @@
   const basePerClick = (owned) =>
     1 + upgrades.reduce((sum, upgrade) => sum + (upgrade.click || 0) * count(owned, upgrade.id), 0);
 
-  const perSecond = (owned) => basePerSecond(owned) * earningsMultiplier(owned);
+  const perSecond = (owned, inventory) =>
+    basePerSecond(owned) * earningsMultiplier(owned) * inventoryCpsMultiplier(inventory);
   const perClick = (owned) => basePerClick(owned) * earningsMultiplier(owned);
 
   /** EXP needed to advance from `level` → `level + 1` (level is 1-based). */
@@ -82,7 +165,6 @@
   function levelProgress(totalExp) {
     let remaining = Math.max(0, Math.floor(Number(totalExp) || 0));
     let level = 1;
-    // Cap iterations so pathological values can't hang.
     for (let i = 0; i < 10000; i += 1) {
       const need = expRequiredForLevel(level);
       if (remaining < need) {
@@ -104,19 +186,30 @@
     const before = levelProgress(totalExp);
     const afterTotal = before.totalExp + Math.max(0, Math.floor(amount || 0));
     const after = levelProgress(afterTotal);
+    const crossed = [];
+    for (let level = before.level + 1; level <= after.level; level += 1) crossed.push(level);
     return {
       ...after,
       gained: Math.max(0, Math.floor(amount || 0)),
       leveledUp: after.level > before.level,
       levelsGained: after.level - before.level,
+      previousLevel: before.level,
+      crossedLevels: crossed,
     };
   }
 
-  /** Pure purchase attempt. Never mutates input. */
-  function buyUpgrade(state, upgradeId) {
+  /** Instantly complete the current level (dev shortcut helper). */
+  function forceLevelUp(totalExp) {
+    const progress = levelProgress(totalExp);
+    const need = Math.max(1, progress.next - progress.exp);
+    return grantExp(totalExp, need);
+  }
+
+  /** Pure purchase attempt. Never mutates input. context may include { level }. */
+  function buyUpgrade(state, upgradeId, context = {}) {
     const upgrade = upgrades.find((entry) => entry.id === upgradeId);
     if (!upgrade) return { ok: false, reason: "unknown", state };
-    if (!isUnlocked(upgrade, state.owned)) {
+    if (!isUnlocked(upgrade, state.owned, context)) {
       return { ok: false, reason: "locked", state, upgrade };
     }
     const ownedCount = count(state.owned, upgradeId);
@@ -139,6 +232,7 @@
 
   return {
     upgrades,
+    ITEMS,
     price,
     perSecond,
     perClick,
@@ -149,15 +243,25 @@
     isUnlocked,
     maxFor,
     earningsMultiplier,
+    inventoryCpsMultiplier,
+    inventoryHasItem,
     expRequiredForLevel,
     levelProgress,
     grantExp,
+    forceLevelUp,
     createEmptyInventory,
     normalizeInventory,
     inventoryUsed,
+    addItemToInventory,
+    rollMilestoneItem,
+    isMilestoneLevel,
+    milestoneAnimation,
+    itemById,
     CLICK_EXP,
     BUY_EXP,
     MAX_OWNED,
     INVENTORY_SIZE,
+    MAX_ITEM_STACK,
+    HELMET_CPS_BONUS,
   };
 });
