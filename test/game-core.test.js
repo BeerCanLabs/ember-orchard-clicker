@@ -23,12 +23,15 @@ const {
   rollMilestoneItem,
   isMilestoneLevel,
   milestoneAnimation,
+  prestige,
   CLICK_EXP,
   BUY_EXP,
   MAX_OWNED,
   INVENTORY_SIZE,
   MAX_ITEM_STACK,
   HELMET_CPS_BONUS,
+  PRESTIGE_COST,
+  MAGIC_PER_PRESTIGE,
 } = require("../game-core.js");
 
 const byId = (id) => upgrades.find((upgrade) => upgrade.id === id);
@@ -227,4 +230,36 @@ test("KPF: milestone levels are every five and item rolls include rare helmet", 
   // Deterministic edges of the weighted table.
   assert.equal(rollMilestoneItem(() => 0), "dice");
   assert.equal(rollMilestoneItem(() => 0.999), "helmet");
+});
+
+test("KPF: prestige costs 200000 and awards one magic point while wiping the run", () => {
+  assert.equal(PRESTIGE_COST, 200000);
+  assert.equal(MAGIC_PER_PRESTIGE, 1);
+
+  const bag = addItemToInventory(createEmptyInventory(), "dice").inventory;
+  const before = {
+    embers: 250000,
+    owned: { lantern: 12, roots: 3, premiere: 1 },
+    exp: 9999,
+    inventory: bag,
+    magicPoints: 2,
+  };
+
+  const blocked = prestige({ ...before, embers: 199999 });
+  assert.equal(blocked.ok, false);
+  assert.equal(blocked.reason, "unaffordable");
+  assert.equal(before.magicPoints, 2);
+
+  const result = prestige(before);
+  assert.equal(result.ok, true);
+  assert.equal(result.magicGained, 1);
+  assert.equal(result.state.embers, 0);
+  assert.deepEqual(result.state.owned, {});
+  assert.equal(result.state.exp, 0);
+  assert.equal(inventoryUsed(result.state.inventory), 0);
+  assert.equal(result.state.magicPoints, 3);
+  // Input not mutated
+  assert.equal(before.embers, 250000);
+  assert.equal(before.magicPoints, 2);
+  assert.equal(before.owned.lantern, 12);
 });

@@ -9,6 +9,8 @@
   const INVENTORY_SIZE = 25;
   const MAX_ITEM_STACK = 4;
   const HELMET_CPS_BONUS = 0.1;
+  const PRESTIGE_COST = 200000;
+  const MAGIC_PER_PRESTIGE = 1;
 
   // Shop order: clerk → season pass → queue runners → box office → double feature
   const upgrades = [
@@ -230,6 +232,39 @@
     };
   }
 
+  /**
+   * Prestige: spend PRESTIGE_COST tickets, wipe run progress (tickets, upgrades,
+   * levels/XP, inventory), keep magic points and add MAGIC_PER_PRESTIGE.
+   * Magic points have no effect yet.
+   */
+  function canPrestige(state) {
+    return (state.embers || 0) >= PRESTIGE_COST;
+  }
+
+  function prestige(state) {
+    if (!canPrestige(state)) {
+      return {
+        ok: false,
+        reason: "unaffordable",
+        cost: PRESTIGE_COST,
+        state,
+      };
+    }
+    const magicBefore = Math.max(0, Math.floor(Number(state.magicPoints) || 0));
+    return {
+      ok: true,
+      cost: PRESTIGE_COST,
+      magicGained: MAGIC_PER_PRESTIGE,
+      state: {
+        embers: 0,
+        owned: {},
+        exp: 0,
+        inventory: createEmptyInventory(),
+        magicPoints: magicBefore + MAGIC_PER_PRESTIGE,
+      },
+    };
+  }
+
   return {
     upgrades,
     ITEMS,
@@ -237,6 +272,8 @@
     perSecond,
     perClick,
     buyUpgrade,
+    prestige,
+    canPrestige,
     count,
     totalOwned,
     isMaxed,
@@ -263,5 +300,7 @@
     INVENTORY_SIZE,
     MAX_ITEM_STACK,
     HELMET_CPS_BONUS,
+    PRESTIGE_COST,
+    MAGIC_PER_PRESTIGE,
   };
 });

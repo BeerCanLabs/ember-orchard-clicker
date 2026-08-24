@@ -4,6 +4,7 @@ const {
   perSecond,
   perClick,
   buyUpgrade,
+  prestige,
   isMaxed,
   isUnlocked,
   maxFor,
@@ -21,6 +22,7 @@ const {
   CLICK_EXP,
   BUY_EXP,
   MAX_OWNED,
+  PRESTIGE_COST,
 } = window.GameCore;
 
 const saved = JSON.parse(localStorage.getItem("ember-orchard-save") || "{}");
@@ -29,6 +31,7 @@ const state = {
   owned: saved.owned && typeof saved.owned === "object" ? saved.owned : {},
   exp: Number(saved.exp) || 0,
   inventory: normalizeInventory(saved.inventory),
+  magicPoints: Math.max(0, Math.floor(Number(saved.magicPoints) || 0)),
 };
 
 const $ = (id) => document.getElementById(id);
@@ -52,8 +55,37 @@ function save() {
       owned: state.owned,
       exp: state.exp,
       inventory: state.inventory,
+      magicPoints: state.magicPoints,
     })
   );
+}
+
+function resetCurtainSlots() {
+  for (const slot of $("upgrades").querySelectorAll(".upgrade-slot")) {
+    slot.classList.remove("is-open", "is-opening");
+    slot.classList.add("is-locked", "is-curtained");
+    delete slot.dataset.seenOpen;
+    slot.dataset.ready = "1";
+  }
+}
+
+function applyPrestige() {
+  const result = prestige(state);
+  if (!result.ok) {
+    $("status").textContent = `Need ${format(PRESTIGE_COST)} tickets to prestige.`;
+    return false;
+  }
+  state.embers = result.state.embers;
+  state.owned = result.state.owned;
+  state.exp = result.state.exp;
+  state.inventory = result.state.inventory;
+  state.magicPoints = result.state.magicPoints;
+  resetCurtainSlots();
+  closeSatchel();
+  $("status").textContent = `Prestige complete. +${result.magicGained} magic point (now ${state.magicPoints}). Run wiped.`;
+  render();
+  save();
+  return true;
 }
 
 function createUpgradeButton(upgrade) {
@@ -406,6 +438,21 @@ function render() {
   $("per-second").textContent = format(perSecond(state.owned, state.inventory));
   $("per-click").textContent = format(perClick(state.owned));
   $("owned-count").textContent = `${totalOwned(state.owned)} owned`;
+  if ($("magic-points")) $("magic-points").textContent = format(state.magicPoints);
+
+  const prestigeBtn = $("prestige-button");
+  if (prestigeBtn) {
+    const can = state.embers >= PRESTIGE_COST;
+    prestigeBtn.disabled = !can;
+    prestigeBtn.classList.toggle("is-ready", can);
+    prestigeBtn.setAttribute(
+      "aria-label",
+      `Prestige for ${format(PRESTIGE_COST)} tickets. Resets upgrades, level, and items. Gains 1 magic point.`
+    );
+    const costEl = prestigeBtn.querySelector('[data-role="prestige-cost"]');
+    if (costEl) costEl.textContent = format(PRESTIGE_COST);
+  }
+
   renderLevel();
   renderInventory();
   updateUpgradeButtons();
@@ -675,19 +722,30 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+$("prestige-button").addEventListener("click", () => {
+  if (state.embers < PRESTIGE_COST) {
+    $("status").textContent = `Need ${format(PRESTIGE_COST)} tickets to prestige.`;
+    return;
+  }
+  if (
+    !confirm(
+      `Prestige for ${format(PRESTIGE_COST)} tickets?\n\nThis resets upgrades, level, tickets, and satchel items.\nYou keep magic points and gain +1.`
+    )
+  ) {
+    return;
+  }
+  applyPrestige();
+});
+
 $("reset-button").addEventListener("click", () => {
-  if (!confirm("Reset all ticket booth progress?")) return;
+  if (!confirm("Reset ALL ticket booth progress, including magic points?")) return;
   state.embers = 0;
   state.owned = {};
   state.exp = 0;
   state.inventory = normalizeInventory([]);
+  state.magicPoints = 0;
   $("status").textContent = "A fresh booth awaits.";
-  for (const slot of $("upgrades").querySelectorAll(".upgrade-slot")) {
-    slot.classList.remove("is-open", "is-opening");
-    slot.classList.add("is-locked", "is-curtained");
-    delete slot.dataset.seenOpen;
-    slot.dataset.ready = "1";
-  }
+  resetCurtainSlots();
   closeSatchel();
   render();
   save();
