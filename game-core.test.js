@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { upgrades, price, perSecond, perClick } = require("../game-core.js");
+const { upgrades, price, perSecond, perClick } = require("./game-core.js");
 
 const byId = (id) => upgrades.find((upgrade) => upgrade.id === id);
 
