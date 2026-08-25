@@ -1,6 +1,6 @@
-# Ember Orchard
+# Ticket Booth
 
-An original, single-page incremental browser game. Click the glowing ember, grow the orchard, and your progress saves automatically in your browser.
+An original, single-page incremental browser game. Claim tickets, staff the booth, and your progress saves automatically in your browser.
 
 ## 🚀 Run on your Mac (one click)
 

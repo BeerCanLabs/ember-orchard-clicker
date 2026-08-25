@@ -3,43 +3,161 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ember Orchard</title>
+    <title>Ticket Booth</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    <div class="bg-aurora" aria-hidden="true"></div>
+
+    <div class="level-badge" id="level-badge" aria-label="Player level">
+      <svg class="level-ring" viewBox="0 0 88 88" aria-hidden="true">
+        <circle class="level-ring-track" cx="44" cy="44" r="37"></circle>
+        <circle class="level-ring-fill" id="level-ring-fill" cx="44" cy="44" r="37"></circle>
+      </svg>
+      <div class="level-badge-core">
+        <span class="level-kicker">LVL</span>
+        <span class="level-value" id="level-value">1</span>
+      </div>
+      <div class="level-exp-tip" id="level-exp-tip">0 / 12 XP</div>
+    </div>
+
+    <button type="button" class="satchel-button" id="satchel-button" aria-haspopup="dialog" aria-controls="satchel-panel" aria-expanded="false" title="Open satchel">
+      <span class="satchel-body" aria-hidden="true">
+        <span class="satchel-flap"></span>
+        <span class="satchel-buckle"></span>
+        <span class="satchel-stitch"></span>
+      </span>
+      <span class="satchel-label">Satchel</span>
+      <span class="satchel-count" id="satchel-count">0/25</span>
+    </button>
+
+    <div class="satchel-overlay" id="satchel-overlay" hidden>
+      <div class="satchel-panel" id="satchel-panel" role="dialog" aria-modal="true" aria-labelledby="satchel-title">
+        <div class="satchel-panel-shine" aria-hidden="true"></div>
+        <header class="satchel-panel-header">
+          <div>
+            <p class="satchel-kicker">Travel bag</p>
+            <h2 class="satchel-title" id="satchel-title">Satchel</h2>
+          </div>
+          <div class="satchel-header-meta">
+            <span class="satchel-capacity" id="satchel-capacity">0 / 25</span>
+            <button type="button" class="satchel-close" id="satchel-close" aria-label="Close satchel">✕</button>
+          </div>
+        </header>
+        <p class="satchel-blurb">Soft leather, twenty-five pockets. Nothing packed yet — room for whatever the booth sends your way.</p>
+        <div class="satchel-grid" id="satchel-grid" aria-label="Inventory slots"></div>
+        <footer class="satchel-footer">
+          <span>Empty for now</span>
+          <span class="satchel-footer-hint">Click the satchel again or press Esc to close</span>
+        </footer>
+      </div>
+    </div>
+
     <main class="game-shell">
       <header>
         <p class="eyebrow">A tiny incremental game</p>
-        <h1>Ember Orchard</h1>
-        <button id="reset-button" class="reset-button" title="Start over">Reset progress</button>
+        <h1>Ticket Booth</h1>
+        <div class="header-actions">
+          <button id="reset-button" class="reset-button" title="Start over">Reset progress</button>
+        </div>
       </header>
 
-      <section class="stats" aria-label="Game statistics">
-        <div><span id="embers">0</span><small>embers</small></div>
-        <div><span id="per-second">0</span><small>per second</small></div>
-        <div><span id="per-click">1</span><small>per click</small></div>
+      <section class="stats-board" aria-label="Game statistics">
+        <article class="stat-card stat-tickets">
+          <div class="stat-icon" aria-hidden="true">🎟</div>
+          <div class="stat-copy">
+            <span class="stat-label">Tickets</span>
+            <span class="stat-value" id="embers">0</span>
+          </div>
+        </article>
+        <article class="stat-card stat-rate">
+          <div class="stat-icon" aria-hidden="true">⏱</div>
+          <div class="stat-copy">
+            <span class="stat-label">Per second</span>
+            <span class="stat-value" id="per-second">0</span>
+          </div>
+        </article>
+        <article class="stat-card stat-click">
+          <div class="stat-icon" aria-hidden="true">👆</div>
+          <div class="stat-copy">
+            <span class="stat-label">Per claim</span>
+            <span class="stat-value" id="per-click">1</span>
+          </div>
+        </article>
+        <article class="stat-card stat-xp">
+          <div class="stat-icon" aria-hidden="true">✦</div>
+          <div class="stat-copy">
+            <span class="stat-label">XP to next</span>
+            <span class="stat-value" id="xp-to-next">12</span>
+          </div>
+        </article>
+        <article class="stat-card stat-magic">
+          <div class="stat-icon" aria-hidden="true">✧</div>
+          <div class="stat-copy">
+            <span class="stat-label">Magic</span>
+            <span class="stat-value" id="magic-points">0</span>
+          </div>
+        </article>
+      </section>
+
+      <section class="prestige-bar" aria-label="Prestige">
+        <div class="prestige-copy">
+          <span class="prestige-kicker">Encore</span>
+          <strong class="prestige-title">Prestige</strong>
+          <p class="prestige-note">
+            Wipe upgrades, level, tickets, and satchel. Keep magic points and gain +1.
+            Magic does nothing yet.
+          </p>
+        </div>
+        <button type="button" id="prestige-button" class="prestige-button" disabled>
+          <span class="prestige-button-label">Prestige</span>
+          <span class="prestige-button-cost">
+            <span data-role="prestige-cost">200,000</span>
+            <span class="ember-mark" aria-hidden="true">🎟</span>
+          </span>
+        </button>
       </section>
 
       <section class="play-area">
         <div class="orchard-wrap">
-          <button id="orchard-button" class="orchard-button" aria-label="Gather an ember">
-            <span class="tree tree-one">✦</span><span class="tree tree-two">✦</span><span class="tree tree-three">✦</span>
-            <span class="orb">✹</span>
-            <span class="button-label">gather</span>
+          <button id="orchard-button" class="claim-pad" aria-label="Claim a ticket">
+            <span class="claim-glow" aria-hidden="true"></span>
+            <span class="claim-ticket" aria-hidden="true">
+              <span class="claim-ticket-notch claim-ticket-notch-left"></span>
+              <span class="claim-ticket-notch claim-ticket-notch-right"></span>
+              <span class="claim-ticket-stub">ADMIT</span>
+              <span class="claim-ticket-main">
+                <span class="claim-ticket-mark">🎟</span>
+                <span class="claim-ticket-title">TICKET</span>
+                <span class="claim-ticket-sub">PRESS TO CLAIM</span>
+              </span>
+            </span>
+            <span class="claim-label">claim +1 XP</span>
           </button>
-          <p class="hint">The orchard remembers every spark.</p>
+          <p class="hint">Every stub counts toward the show.</p>
         </div>
 
-        <aside class="shop" aria-label="Upgrades">
-          <div class="shop-title"><span>Grow the orchard</span><span id="owned-count">0 owned</span></div>
+        <aside class="shop" aria-label="Upgrade shop">
+          <div class="shop-title">
+            <div class="shop-title-main">
+              <span class="shop-kicker">Box office</span>
+              <span class="shop-heading">Ticket Shop</span>
+            </div>
+            <span class="shop-owned" id="owned-count">0 owned</span>
+          </div>
+          <div class="shop-columns" aria-hidden="true">
+            <span>Item</span>
+            <span>Price</span>
+          </div>
           <div id="upgrades" class="upgrades"></div>
         </aside>
       </section>
-      <p id="status" class="status" aria-live="polite">Your grove is quiet. For now.</p>
+      <p id="status" class="status" aria-live="polite">The booth is quiet. For now.</p>
     </main>
+    <script src="game-core.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

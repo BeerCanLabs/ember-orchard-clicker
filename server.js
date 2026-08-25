@@ -15,4 +15,4 @@ http.createServer((request, response) => {
     response.writeHead(200, { "Content-Type": types[path.extname(filePath)] || "application/octet-stream" });
     response.end(data);
   });
-}).listen(3000, () => console.log("Ember Orchard is running at http://localhost:3000"));
+}).listen(3000, () => console.log("Ticket Booth is running at http://localhost:3000"));
