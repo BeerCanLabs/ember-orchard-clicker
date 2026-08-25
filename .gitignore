@@ -1,0 +1,3 @@
+# Local account/leaderboard database (created at runtime by server.js)
+data/
+node_modules/

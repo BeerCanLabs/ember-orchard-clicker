@@ -2,7 +2,7 @@
   "name": "ember-orchard-clicker",
   "private": true,
   "scripts": {
-    "start": "npx serve .",
+    "start": "node server.js",
     "test": "node --test"
   }
 }

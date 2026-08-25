@@ -241,6 +241,17 @@
     return (state.embers || 0) >= PRESTIGE_COST;
   }
 
+  /**
+   * Clamp the two leaderboard-relevant counters into safe, non-negative
+   * integers. Shared by the client and the server so both agree on the shape.
+   */
+  function sanitizeStats(stats = {}) {
+    return {
+      lifetimeEmbers: Math.max(0, Math.floor(Number(stats.lifetimeEmbers) || 0)),
+      prestigeCount: Math.max(0, Math.floor(Number(stats.prestigeCount) || 0)),
+    };
+  }
+
   function prestige(state) {
     if (!canPrestige(state)) {
       return {
@@ -251,16 +262,22 @@
       };
     }
     const magicBefore = Math.max(0, Math.floor(Number(state.magicPoints) || 0));
+    // lifetimeEmbers and prestigeCount survive a prestige (they only ever grow).
+    const lifetimeBefore = Math.max(0, Math.floor(Number(state.lifetimeEmbers) || 0));
+    const prestigeBefore = Math.max(0, Math.floor(Number(state.prestigeCount) || 0));
     return {
       ok: true,
       cost: PRESTIGE_COST,
       magicGained: MAGIC_PER_PRESTIGE,
+      prestigeCount: prestigeBefore + 1,
       state: {
         embers: 0,
         owned: {},
         exp: 0,
         inventory: createEmptyInventory(),
         magicPoints: magicBefore + MAGIC_PER_PRESTIGE,
+        lifetimeEmbers: lifetimeBefore,
+        prestigeCount: prestigeBefore + 1,
       },
     };
   }
@@ -274,6 +291,7 @@
     buyUpgrade,
     prestige,
     canPrestige,
+    sanitizeStats,
     count,
     totalOwned,
     isMaxed,

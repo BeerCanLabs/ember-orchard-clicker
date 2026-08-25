@@ -32,6 +32,9 @@ const state = {
   exp: Number(saved.exp) || 0,
   inventory: normalizeInventory(saved.inventory),
   magicPoints: Math.max(0, Math.floor(Number(saved.magicPoints) || 0)),
+  // Leaderboard counters — these only ever grow (never reset on prestige).
+  lifetimeEmbers: Math.max(0, Math.floor(Number(saved.lifetimeEmbers) || 0)),
+  prestigeCount: Math.max(0, Math.floor(Number(saved.prestigeCount) || 0)),
 };
 
 const $ = (id) => document.getElementById(id);
@@ -48,16 +51,27 @@ function playerLevel() {
 }
 
 function save() {
-  localStorage.setItem(
-    "ember-orchard-save",
-    JSON.stringify({
-      embers: state.embers,
-      owned: state.owned,
-      exp: state.exp,
-      inventory: state.inventory,
-      magicPoints: state.magicPoints,
-    })
-  );
+  const payload = {
+    embers: state.embers,
+    owned: state.owned,
+    exp: state.exp,
+    inventory: state.inventory,
+    magicPoints: state.magicPoints,
+    lifetimeEmbers: state.lifetimeEmbers,
+    prestigeCount: state.prestigeCount,
+  };
+  localStorage.setItem("ember-orchard-save", JSON.stringify(payload));
+  // Let the account/sync layer (if present) mirror this to the cloud.
+  if (window.TicketBoothSync && typeof window.TicketBoothSync.onLocalSave === "function") {
+    window.TicketBoothSync.onLocalSave(payload);
+  }
+}
+
+/** Add tickets to the run AND to the lifetime counter (which never resets). */
+function earnTickets(amount) {
+  const gain = Math.max(0, Number(amount) || 0);
+  state.embers += gain;
+  state.lifetimeEmbers += gain;
 }
 
 function resetCurtainSlots() {
@@ -80,6 +94,8 @@ function applyPrestige() {
   state.exp = result.state.exp;
   state.inventory = result.state.inventory;
   state.magicPoints = result.state.magicPoints;
+  state.lifetimeEmbers = result.state.lifetimeEmbers;
+  state.prestigeCount = result.state.prestigeCount;
   resetCurtainSlots();
   closeSatchel();
   $("status").textContent = `Prestige complete. +${result.magicGained} magic point (now ${state.magicPoints}). Run wiped.`;
@@ -461,7 +477,7 @@ function render() {
 function gather(event) {
   playPress($("orchard-button"));
   const gain = perClick(state.owned);
-  state.embers += gain;
+  earnTickets(gain);
   applyExp(CLICK_EXP);
 
   const bubble = document.createElement("span");
@@ -744,6 +760,8 @@ $("reset-button").addEventListener("click", () => {
   state.exp = 0;
   state.inventory = normalizeInventory([]);
   state.magicPoints = 0;
+  state.lifetimeEmbers = 0;
+  state.prestigeCount = 0;
   $("status").textContent = "A fresh booth awaits.";
   resetCurtainSlots();
   closeSatchel();
@@ -754,7 +772,7 @@ $("reset-button").addEventListener("click", () => {
 // Passive income: update numbers in place. Do NOT rebuild upgrade button DOM.
 setInterval(() => {
   const cps = perSecond(state.owned, state.inventory);
-  if (cps > 0) state.embers += cps / 10;
+  if (cps > 0) earnTickets(cps / 10);
   render();
 }, 100);
 
@@ -762,3 +780,48 @@ setInterval(save, 5000);
 mountUpgrades();
 mountInventory();
 render();
+
+// ── Account / cloud-save integration ──────────────────────────────────────
+// The auth layer (auth.js) calls these to load a chosen save into the live
+// game, or to start a brand-new run, after login. Kept here so it has direct
+// access to `state`, `render`, and `save`.
+
+function replaceState(nextSave) {
+  const src = nextSave && typeof nextSave === "object" ? nextSave : {};
+  state.embers = Number(src.embers) || 0;
+  state.owned = src.owned && typeof src.owned === "object" ? src.owned : {};
+  state.exp = Number(src.exp) || 0;
+  state.inventory = normalizeInventory(src.inventory);
+  state.magicPoints = Math.max(0, Math.floor(Number(src.magicPoints) || 0));
+  state.lifetimeEmbers = Math.max(0, Math.floor(Number(src.lifetimeEmbers) || 0));
+  state.prestigeCount = Math.max(0, Math.floor(Number(src.prestigeCount) || 0));
+  resetCurtainSlots();
+  closeSatchel();
+  render();
+  save();
+}
+
+window.TicketBoothGame = {
+  // Load a cloud save into the running game (the "continue" path).
+  applyCloudSave(cloudSave) {
+    replaceState(cloudSave);
+    $("status").textContent = "Welcome back — your booth is restored.";
+  },
+  // Wipe to a brand-new run (the "start new" path). Keeps the account.
+  startFreshRun() {
+    replaceState({});
+    $("status").textContent = "A fresh booth awaits.";
+  },
+  // Snapshot the current save (for pushing to the cloud).
+  snapshot() {
+    return {
+      embers: state.embers,
+      owned: state.owned,
+      exp: state.exp,
+      inventory: state.inventory,
+      magicPoints: state.magicPoints,
+      lifetimeEmbers: state.lifetimeEmbers,
+      prestigeCount: state.prestigeCount,
+    };
+  },
+};

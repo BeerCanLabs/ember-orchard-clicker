@@ -61,6 +61,12 @@
         <p class="eyebrow">A tiny incremental game</p>
         <h1>Ticket Booth</h1>
         <div class="header-actions">
+          <div class="account-pill" aria-label="Account">
+            <span class="account-dot" aria-hidden="true">●</span>
+            <span class="account-name" id="account-name">Guest</span>
+            <button type="button" id="open-auth" class="account-button">Log in</button>
+            <button type="button" id="logout-button" class="account-button" hidden>Log out</button>
+          </div>
           <button id="reset-button" class="reset-button" title="Start over">Reset progress</button>
         </div>
       </header>
@@ -156,8 +162,63 @@
         </aside>
       </section>
       <p id="status" class="status" aria-live="polite">The booth is quiet. For now.</p>
+
+      <section class="leaderboard" aria-label="Leaderboard">
+        <div class="leaderboard-head">
+          <div>
+            <span class="leaderboard-kicker">Hall of fame</span>
+            <h2 class="leaderboard-title">Leaderboard</h2>
+          </div>
+          <button type="button" id="refresh-leaderboard" class="leaderboard-refresh" title="Refresh standings">↻</button>
+        </div>
+        <div class="leaderboard-columns" aria-hidden="true">
+          <span>#</span>
+          <span>Player</span>
+          <span title="Times prestiged">Prestiges</span>
+          <span title="Total tickets ever earned">Lifetime 🎟</span>
+        </div>
+        <ol class="leaderboard-list" id="leaderboard-list"></ol>
+        <p class="leaderboard-empty" id="leaderboard-empty" hidden>No players ranked yet — be the first to prestige!</p>
+      </section>
     </main>
+
+    <div class="auth-overlay" id="auth-overlay" hidden>
+      <div class="auth-panel" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+        <header class="auth-panel-header">
+          <div>
+            <p class="auth-kicker">Your booth, anywhere</p>
+            <h2 class="auth-title" id="auth-title">Log in or sign up</h2>
+          </div>
+          <button type="button" class="auth-close" id="auth-close" aria-label="Close">✕</button>
+        </header>
+        <p class="auth-blurb">Create an account so your progress survives updates. Log in from anywhere to pick up your saved booth — or start fresh.</p>
+        <form class="auth-form" id="auth-form">
+          <label class="auth-label" for="auth-username">Username</label>
+          <input class="auth-input" id="auth-username" name="username" type="text" autocomplete="username" placeholder="3–20 letters, numbers, _" maxlength="20" />
+          <label class="auth-label" for="auth-password">Password</label>
+          <input class="auth-input" id="auth-password" name="password" type="password" autocomplete="current-password" placeholder="at least 6 characters" />
+          <p class="auth-error" id="auth-error" aria-live="polite"></p>
+          <div class="auth-actions">
+            <button type="button" class="auth-btn auth-btn-primary" id="auth-login">Log in</button>
+            <button type="button" class="auth-btn" id="auth-register">Create account</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="choice-overlay" id="choice-overlay" hidden>
+      <div class="choice-panel" role="dialog" aria-modal="true" aria-labelledby="choice-title">
+        <h2 class="choice-title" id="choice-title">Welcome back!</h2>
+        <p class="choice-blurb">You have a saved booth. Continue where you left off, or start a brand-new run?</p>
+        <div class="choice-actions">
+          <button type="button" class="choice-btn choice-btn-primary" id="choice-continue">Continue my save</button>
+          <button type="button" class="choice-btn" id="choice-new">Start new</button>
+        </div>
+      </div>
+    </div>
+
     <script src="game-core.js"></script>
     <script src="app.js"></script>
+    <script src="auth.js"></script>
   </body>
 </html>

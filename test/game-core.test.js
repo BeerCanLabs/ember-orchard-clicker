@@ -263,3 +263,47 @@ test("KPF: prestige costs 200000 and awards one magic point while wiping the run
   assert.equal(before.magicPoints, 2);
   assert.equal(before.owned.lantern, 12);
 });
+
+const { sanitizeStats } = require("../game-core.js");
+
+test("KPF: prestige increments the prestige count and preserves lifetime tickets", () => {
+  const before = {
+    embers: 250000,
+    owned: { lantern: 5 },
+    exp: 100,
+    inventory: createEmptyInventory(),
+    magicPoints: 0,
+    lifetimeEmbers: 900000,
+    prestigeCount: 3,
+  };
+  const result = prestige(before);
+  assert.equal(result.ok, true);
+  // Lifetime tickets never reset on prestige.
+  assert.equal(result.state.lifetimeEmbers, 900000);
+  // Prestige count grows by exactly one.
+  assert.equal(result.state.prestigeCount, 4);
+  assert.equal(result.prestigeCount, 4);
+  // Input not mutated.
+  assert.equal(before.prestigeCount, 3);
+  assert.equal(before.lifetimeEmbers, 900000);
+});
+
+test("KPF: prestige from a save with no leaderboard counters starts them at safe defaults", () => {
+  const result = prestige({ embers: 200000, owned: {}, exp: 0, inventory: [], magicPoints: 0 });
+  assert.equal(result.ok, true);
+  assert.equal(result.state.lifetimeEmbers, 0);
+  assert.equal(result.state.prestigeCount, 1);
+});
+
+test("KPF: sanitizeStats clamps leaderboard counters to non-negative integers", () => {
+  assert.deepEqual(sanitizeStats({ lifetimeEmbers: 12.9, prestigeCount: 3.7 }), {
+    lifetimeEmbers: 12,
+    prestigeCount: 3,
+  });
+  assert.deepEqual(sanitizeStats({ lifetimeEmbers: -5, prestigeCount: -1 }), {
+    lifetimeEmbers: 0,
+    prestigeCount: 0,
+  });
+  assert.deepEqual(sanitizeStats({}), { lifetimeEmbers: 0, prestigeCount: 0 });
+});
+
