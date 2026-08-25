@@ -14,28 +14,67 @@
 
   // ── Movie projector boost ──────────────────────────────────────────────────
   // Playing a movie costs tickets, then showers bonus tickets: a flat peak rate
-  // for the first stretch, then a slow linear fade to zero.
-  const MOVIE_COST = 1000; // tickets to start a showing
-  const MOVIE_PEAK_RATE = 1000; // bonus tickets/sec during the peak window
-  const MOVIE_PEAK_SECONDS = 15; // flat-rate window length
-  const MOVIE_TOTAL_SECONDS = 60; // total showing length (peak + fade)
+  // for the first stretch, then a slow linear fade to zero. There are two
+  // features to choose from — a pricier one pays out more per second but runs
+  // for the same length of time.
+  const MOVIE_PEAK_SECONDS = 15; // flat-rate window length (shared by all movies)
+  const MOVIE_TOTAL_SECONDS = 60; // total showing length, peak + fade (shared)
+
+  // Catalog of playable movies. Every movie shares the peak/total timing so a
+  // showing always lasts about a minute; they differ only in price and payout.
+  const MOVIES = {
+    matinee: {
+      id: "matinee",
+      title: "The Afternoon Matinee",
+      cost: 1000, // tickets to start a showing
+      peakRate: 1000, // bonus tickets/sec during the flat peak window
+      blurb: "A cozy short reel — a steady rush of bonus tickets.",
+    },
+    premiere: {
+      id: "premiere",
+      title: "The Grand Premiere",
+      cost: 5000, // pricier than the matinee
+      peakRate: 4000, // but pours in far more per second
+      blurb: "The big-ticket feature — costs more, but pays out much faster.",
+    },
+  };
+  const DEFAULT_MOVIE_ID = "matinee";
+
+  /** Look up a movie by id, falling back to the default feature. */
+  function movieById(movieId) {
+    if (movieId && Object.prototype.hasOwnProperty.call(MOVIES, movieId)) {
+      return MOVIES[movieId];
+    }
+    return MOVIES[DEFAULT_MOVIE_ID];
+  }
+
+  // Back-compat constants describing the default (matinee) feature. Older code
+  // and tests reference these; they mirror the matinee entry in MOVIES.
+  const MOVIE_COST = MOVIES[DEFAULT_MOVIE_ID].cost;
+  const MOVIE_PEAK_RATE = MOVIES[DEFAULT_MOVIE_ID].peakRate;
 
   /**
    * Bonus tickets/sec from a movie at `elapsed` seconds into the showing.
-   * Flat MOVIE_PEAK_RATE for the first MOVIE_PEAK_SECONDS, then a linear fade
-   * down to 0 by MOVIE_TOTAL_SECONDS. Returns 0 before the start / after the end.
+   * Flat peak rate for the first MOVIE_PEAK_SECONDS, then a linear fade down to
+   * 0 by MOVIE_TOTAL_SECONDS. Returns 0 before the start / after the end.
+   * `movieId` selects which feature is playing (defaults to the matinee).
    */
-  function movieRate(elapsed) {
+  function movieRate(elapsed, movieId) {
     const t = Number(elapsed);
     if (!Number.isFinite(t) || t < 0) return 0;
-    if (t < MOVIE_PEAK_SECONDS) return MOVIE_PEAK_RATE;
     if (t >= MOVIE_TOTAL_SECONDS) return 0;
+    const peakRate = movieById(movieId).peakRate;
+    if (t < MOVIE_PEAK_SECONDS) return peakRate;
     const fadeSpan = MOVIE_TOTAL_SECONDS - MOVIE_PEAK_SECONDS;
     const fadeProgress = (t - MOVIE_PEAK_SECONDS) / fadeSpan; // 0 → 1
-    return MOVIE_PEAK_RATE * (1 - fadeProgress);
+    return peakRate * (1 - fadeProgress);
   }
 
-  /** True while a showing that started `elapsed` seconds ago is still running. */
+  /**
+   * True while a showing that started `elapsed` seconds ago is still running.
+   * Timing is identical for every movie, so `movieId` is accepted for symmetry
+   * but does not change the answer.
+   */
   function movieIsPlaying(elapsed) {
     const t = Number(elapsed);
     return Number.isFinite(t) && t >= 0 && t < MOVIE_TOTAL_SECONDS;
@@ -305,6 +344,9 @@
     canPrestige,
     movieRate,
     movieIsPlaying,
+    movieById,
+    MOVIES,
+    DEFAULT_MOVIE_ID,
     count,
     totalOwned,
     isMaxed,

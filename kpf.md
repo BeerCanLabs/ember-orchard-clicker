@@ -23,10 +23,12 @@ Each KPF below is a user-visible promise. Its automated test must continue to pa
 | Iron Helmet | Owning at least one Iron Helmet grants **+10% tickets/sec**; extra helmets do not stack the bonus. | `iron helmet grants a non-stacking 10 percent passive bonus` |
 | Milestone loot | Every **5** levels is a milestone; loot rolls Dice/Cards/Pictures often and Iron Helmet rarely. | `milestone levels are every five and item rolls include rare helmet` |
 | Prestige | Costs **200,000** tickets; resets tickets, upgrades, level/XP, and satchel items; awards **+1 magic point** (magic has no effect yet). | `prestige costs 200000 and awards one magic point while wiping the run` |
-| Movie cost | Playing a movie costs **1,000** tickets. | `a movie costs 1000 tickets to play` |
-| Movie peak | While playing, a movie grants a flat **1,000 bonus tickets/sec for the first 15 seconds**. | `a playing movie grants a flat 1000 tickets/sec for the first 15 seconds` |
+| Movie cost | Playing the default movie (matinee) costs **1,000** tickets. | `a movie costs 1000 tickets to play` |
+| Movie peak | While playing, the matinee grants a flat **1,000 bonus tickets/sec for the first 15 seconds**. | `a playing movie grants a flat 1000 tickets/sec for the first 15 seconds` |
 | Movie fade | After 15s the bonus **fades gradually** (progressively fewer tickets), hitting **0 at 60s** — half rate at the fade midpoint. | `after the peak window a movie gives progressively fewer tickets, reaching zero at 60s` |
 | Movie length | A showing plays for about **one minute** (0–60s), then stops. | `a movie plays for about one minute then stops` |
+| Two movies | There are **two features** to choose from: the **Matinee** (feature 1) and the pricier **Grand Premiere** (feature 2). | `there are two playable movies to choose from`, `the default movie is the matinee (feature 1) at 1000 cost / 1000 per sec` |
+| Premiere trade-off | The **Grand Premiere costs more** than the Matinee but **pays more tickets/sec**, while running for the **same length**. | `movie 2 (premiere) costs more than movie 1 but pays more per second`, `premiere pays its higher flat rate during the peak, then fades to zero the same way`, `both movies run for exactly the same length (about one minute)` |
 
 ## Test command
 
@@ -50,7 +52,7 @@ A prestige bar under the stats board spends **200,000** tickets to wipe the curr
 
 ## UI note (movie projector)
 
-A fixed **movie-projector button (🎥)** sits in the **bottom-right**. Clicking it opens a "Play a movie?" prompt; confirming spends **1,000** tickets and starts a showing. While a movie plays, the button pulses and shows the remaining time and current bonus rate, a "Now showing" banner appears, and the page gets a subtle projector flicker. The showing pours in bonus tickets at a flat 1,000/sec for 15s, then fades to 0 by 60s, after which it stops on its own. The playing state is **runtime-only** (not saved), so reloading mid-movie ends it rather than letting it be paused/resumed for exploit.
+A fixed **3D movie projector** (built entirely from CSS elements — no image assets) sits in the **bottom-right**: a metallic housing, lens barrel, power LED, two film reels, and a little stand. Clicking it opens a **"Pick a movie"** prompt listing **two features** — the **Matinee** (1,000 tickets, ~1,000/s) and the **Grand Premiere** (5,000 tickets, ~4,000/s). Choosing one spends its cost and starts a showing. When a movie plays the projector **turns on**: the lens glows, a light beam shoots out and flickers, the power LED lights green and blinks, and both reels spin. The button also shows the remaining time and current bonus rate, a "Now showing — <title>" banner appears, and the page gets a subtle projector flicker. Every movie pours in bonus tickets at its flat peak rate for 15s, then fades to 0 by 60s, after which it stops on its own. Both movies run for the **same length**; the pricier one just pays more per second. The playing state is **runtime-only** (not saved), so reloading mid-movie ends it rather than letting it be paused/resumed for exploit. All power-on animations respect `prefers-reduced-motion`.
 
 ## Dev note (temporary)
 

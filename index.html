@@ -158,9 +158,26 @@
       <p id="status" class="status" aria-live="polite">The ticket booth is quiet. For now.</p>
     </main>
 
-    <!-- Movie projector: fixed bottom-right button -->
+    <!-- Movie projector: fixed bottom-right 3D projector (pure CSS, no images) -->
     <button type="button" class="movie-button" id="movie-button" title="Play a movie" aria-label="Play a movie">
-      <span class="movie-icon" aria-hidden="true">🎥</span>
+      <span class="projector" aria-hidden="true">
+        <span class="projector-beam"></span>
+        <span class="projector-reel projector-reel--feed">
+          <span class="projector-reel-spoke"></span>
+          <span class="projector-reel-spoke"></span>
+          <span class="projector-reel-spoke"></span>
+        </span>
+        <span class="projector-reel projector-reel--take">
+          <span class="projector-reel-spoke"></span>
+          <span class="projector-reel-spoke"></span>
+          <span class="projector-reel-spoke"></span>
+        </span>
+        <span class="projector-body">
+          <span class="projector-led"></span>
+          <span class="projector-lens"><span class="projector-lens-glow"></span></span>
+        </span>
+        <span class="projector-stand"></span>
+      </span>
       <span class="movie-badge" id="movie-badge">
         <span class="movie-time-left" id="movie-time-left"></span>
         <span class="movie-rate" id="movie-rate"></span>
@@ -170,28 +187,28 @@
     <!-- "Now showing" ambient banner while a movie plays -->
     <div class="movie-screen" id="movie-screen" aria-hidden="true" hidden>
       <span class="movie-screen-reel">🎞️</span>
-      <span class="movie-screen-text">Now showing…</span>
+      <span class="movie-screen-text" id="movie-screen-text">Now showing…</span>
     </div>
 
-    <!-- Play-a-movie prompt -->
+    <!-- Pick-a-movie prompt: choose feature 1 or feature 2 -->
     <div class="movie-overlay" id="movie-overlay" hidden>
       <div class="movie-panel" role="dialog" aria-modal="true" aria-labelledby="movie-title">
         <span class="movie-panel-icon" aria-hidden="true">🎬</span>
-        <h2 class="movie-title" id="movie-title">Play a movie?</h2>
+        <h2 class="movie-title" id="movie-title">Pick a movie</h2>
         <p class="movie-blurb">
-          Roll the projector for a ticket rush: a big burst of bonus tickets that
-          starts strong, then slowly fades out over about a minute.
+          Roll the projector for a ticket rush that starts strong, then slowly
+          fades out over about a minute. Choose your feature:
         </p>
+        <div class="movie-choices" id="movie-choices">
+          <!-- movie option cards are rendered here by app.js -->
+        </div>
         <div class="movie-actions">
-          <button type="button" class="movie-play" id="movie-play">
-            Play — <span class="movie-cost">1,000</span> 🎟
-          </button>
           <button type="button" class="movie-cancel" id="movie-cancel">Not now</button>
         </div>
       </div>
     </div>
 
-    <script src="game-core.js?v=4"></script>
-    <script src="app.js?v=4"></script>
+    <script src="game-core.js?v=5"></script>
+    <script src="app.js?v=5"></script>
   </body>
 </html>

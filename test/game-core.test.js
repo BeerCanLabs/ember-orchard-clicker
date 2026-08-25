@@ -267,6 +267,9 @@ test("KPF: prestige costs 200000 and awards one magic point while wiping the run
 const {
   movieRate,
   movieIsPlaying,
+  movieById,
+  MOVIES,
+  DEFAULT_MOVIE_ID,
   MOVIE_COST,
   MOVIE_PEAK_RATE,
   MOVIE_PEAK_SECONDS,
@@ -311,5 +314,70 @@ test("movie rate ignores invalid or pre-start times", () => {
   assert.equal(movieRate(-1), 0);
   assert.equal(movieRate(NaN), 0);
   assert.equal(movieIsPlaying(-5), false);
+});
+
+// ── Two movies ───────────────────────────────────────────────────────────────
+
+test("KPF: there are two playable movies to choose from", () => {
+  const ids = Object.keys(MOVIES);
+  assert.equal(ids.length, 2);
+  assert.ok(MOVIES.matinee, "matinee (feature 1) exists");
+  assert.ok(MOVIES.premiere, "premiere (feature 2) exists");
+  // Each has the fields the UI relies on.
+  for (const m of Object.values(MOVIES)) {
+    assert.equal(typeof m.id, "string");
+    assert.equal(typeof m.title, "string");
+    assert.equal(typeof m.cost, "number");
+    assert.equal(typeof m.peakRate, "number");
+  }
+});
+
+test("KPF: the default movie is the matinee (feature 1) at 1000 cost / 1000 per sec", () => {
+  assert.equal(DEFAULT_MOVIE_ID, "matinee");
+  assert.equal(MOVIES.matinee.cost, 1000);
+  assert.equal(MOVIES.matinee.peakRate, 1000);
+});
+
+test("KPF: movie 2 (premiere) costs more than movie 1 but pays more per second", () => {
+  assert.ok(
+    MOVIES.premiere.cost > MOVIES.matinee.cost,
+    "premiere must cost more than the matinee"
+  );
+  assert.ok(
+    MOVIES.premiere.peakRate > MOVIES.matinee.peakRate,
+    "premiere must pay more per second than the matinee"
+  );
+});
+
+test("KPF: both movies run for exactly the same length (about one minute)", () => {
+  // Timing is shared, so isPlaying is identical and both hit zero at 60s.
+  assert.equal(movieIsPlaying(59.9), true);
+  assert.equal(movieIsPlaying(60), false);
+  assert.equal(movieRate(60, "matinee"), 0);
+  assert.equal(movieRate(60, "premiere"), 0);
+  // Both are still paying out (non-zero) right up to the final second.
+  assert.ok(movieRate(59, "matinee") > 0);
+  assert.ok(movieRate(59, "premiere") > 0);
+});
+
+test("KPF: premiere pays its higher flat rate during the peak, then fades to zero the same way", () => {
+  assert.equal(movieRate(0, "premiere"), MOVIES.premiere.peakRate);
+  assert.equal(movieRate(14.999, "premiere"), MOVIES.premiere.peakRate);
+  // Same-shaped fade: half rate at the fade midpoint, zero at 60s.
+  assert.equal(movieRate(37.5, "premiere"), MOVIES.premiere.peakRate / 2);
+  assert.equal(movieRate(60, "premiere"), 0);
+  // At every instant of a showing, premiere >= matinee (strictly more at peak).
+  assert.ok(movieRate(5, "premiere") > movieRate(5, "matinee"));
+  assert.ok(movieRate(45, "premiere") > movieRate(45, "matinee"));
+});
+
+test("movieById falls back to the default for unknown or missing ids", () => {
+  assert.equal(movieById().id, DEFAULT_MOVIE_ID);
+  assert.equal(movieById("nope").id, DEFAULT_MOVIE_ID);
+  assert.equal(movieById("premiere").id, "premiere");
+});
+
+test("an unknown movieId uses the default movie's rate", () => {
+  assert.equal(movieRate(0, "does-not-exist"), MOVIES.matinee.peakRate);
 });
 

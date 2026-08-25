@@ -20,6 +20,9 @@ const {
   milestoneAnimation,
   movieRate,
   movieIsPlaying,
+  movieById,
+  MOVIES,
+  DEFAULT_MOVIE_ID,
   INVENTORY_SIZE,
   CLICK_EXP,
   BUY_EXP,
@@ -45,6 +48,8 @@ const format = (number) => Math.floor(number).toLocaleString();
 // runs during initial mount — can safely read it.
 let movieStartedAt = null;
 let movieSafetyTimer = null;
+// Which movie the current (or most recent) showing is/was — defaults to feature 1.
+let currentMovieId = DEFAULT_MOVIE_ID;
 const prefersReducedMotion = () =>
   window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -452,11 +457,13 @@ function render() {
   const movieBtn = $("movie-button");
   if (movieBtn) {
     const playing = movieStartedAt != null;
-    // Disabled only when you can't afford a *new* showing and none is playing.
-    movieBtn.disabled = !playing && state.embers < MOVIE_COST;
+    // Cheapest movie sets the affordability threshold for opening the picker.
+    const cheapest = Math.min(...Object.values(MOVIES).map((m) => m.cost));
+    // Disabled only when you can't afford *any* showing and none is playing.
+    movieBtn.disabled = !playing && state.embers < cheapest;
     movieBtn.setAttribute(
       "aria-label",
-      playing ? "Movie playing" : `Play a movie for ${format(MOVIE_COST)} tickets`
+      playing ? "Movie playing" : `Play a movie (from ${format(cheapest)} tickets)`
     );
   }
 
@@ -809,23 +816,27 @@ function tickMovie() {
     stopMovie();
     return;
   }
-  const bonusPerSecond = movieRate(elapsed);
+  const bonusPerSecond = movieRate(elapsed, currentMovieId);
   if (bonusPerSecond > 0) state.embers += bonusPerSecond / 10; // 100ms tick
   updateMovieUi(elapsed);
 }
 
-function startMovie() {
+function startMovie(movieId) {
   if (movieStartedAt != null) return; // already showing
-  if (state.embers < MOVIE_COST) {
-    $("status").textContent = `Need ${format(MOVIE_COST)} tickets to play a movie.`;
+  const movie = movieById(movieId);
+  if (state.embers < movie.cost) {
+    $("status").textContent = `Need ${format(movie.cost)} tickets for ${movie.title}.`;
     return;
   }
-  state.embers -= MOVIE_COST;
+  state.embers -= movie.cost;
+  currentMovieId = movie.id;
   movieStartedAt = Date.now();
   document.body.classList.add("movie-playing");
   const screen = $("movie-screen");
   if (screen) screen.hidden = false;
-  $("status").textContent = "🎬 Now showing! Bonus tickets are rolling in.";
+  const screenText = $("movie-screen-text");
+  if (screenText) screenText.textContent = `Now showing — ${movie.title}`;
+  $("status").textContent = `🎬 Now showing “${movie.title}”! Bonus tickets are rolling in.`;
   updateMovieUi(0);
   // Hard safety net: guarantee the showing ends even if the tick loop stalls.
   clearTimeout(movieSafetyTimer);
@@ -858,7 +869,45 @@ function updateMovieUi(elapsed) {
   }
   const rateLabel = $("movie-rate");
   if (rateLabel && movieStartedAt != null) {
-    rateLabel.textContent = `+${format(movieRate(elapsed))}/s`;
+    rateLabel.textContent = `+${format(movieRate(elapsed, currentMovieId))}/s`;
+  }
+}
+
+/** Build the two feature cards inside the modal, disabling any you can't afford. */
+function renderMovieChoices() {
+  const wrap = $("movie-choices");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+  for (const movie of Object.values(MOVIES)) {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "movie-choice";
+    card.dataset.movie = movie.id;
+    card.disabled = state.embers < movie.cost;
+
+    const info = document.createElement("span");
+    info.className = "movie-choice-info";
+    const title = document.createElement("span");
+    title.className = "movie-choice-title";
+    title.textContent = movie.title;
+    const desc = document.createElement("span");
+    desc.className = "movie-choice-desc";
+    desc.textContent = `${movie.blurb} (~${format(movie.peakRate)}/s at peak)`;
+    info.appendChild(title);
+    info.appendChild(desc);
+
+    const cost = document.createElement("span");
+    cost.className = "movie-choice-cost";
+    cost.textContent = `${format(movie.cost)} 🎟`;
+
+    card.appendChild(info);
+    card.appendChild(cost);
+    card.addEventListener("click", () => {
+      if (card.disabled) return;
+      closeMoviePrompt();
+      startMovie(movie.id);
+    });
+    wrap.appendChild(card);
   }
 }
 
@@ -866,10 +915,11 @@ function openMoviePrompt() {
   if (movieStartedAt != null) return; // already playing
   const overlay = $("movie-overlay");
   if (!overlay) {
-    // No modal in the DOM — just start directly.
-    startMovie();
+    // No modal in the DOM — just start the default feature directly.
+    startMovie(DEFAULT_MOVIE_ID);
     return;
   }
+  renderMovieChoices();
   overlay.hidden = false;
   requestAnimationFrame(() => overlay.classList.add("is-open"));
 }
@@ -885,12 +935,6 @@ function closeMoviePrompt() {
 
 if ($("movie-button")) {
   $("movie-button").addEventListener("click", openMoviePrompt);
-}
-if ($("movie-play")) {
-  $("movie-play").addEventListener("click", () => {
-    closeMoviePrompt();
-    startMovie();
-  });
 }
 if ($("movie-cancel")) {
   $("movie-cancel").addEventListener("click", closeMoviePrompt);
