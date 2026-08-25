@@ -1674,6 +1674,7 @@ h1 {
 }
 
 /* Ambient "now showing" banner + subtle screen flicker on the page */
+.movie-screen[hidden] { display: none !important; }
 .movie-screen {
   position: fixed;
   left: 50%;

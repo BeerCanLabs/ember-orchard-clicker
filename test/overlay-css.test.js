@@ -5,12 +5,13 @@ const path = require("node:path");
 
 const css = fs.readFileSync(path.join(__dirname, "..", "style.css"), "utf8");
 
-// Regression guard: a full-screen fixed overlay that uses `display: flex` (or
-// any non-none display) will keep intercepting clicks even when it has the
-// `hidden` attribute, because that display value overrides `hidden`'s default
-// `display: none`. Every such overlay MUST have an explicit `[hidden]` rule.
-// This was the bug that froze the whole game behind an invisible movie modal.
-const OVERLAYS = ["movie-overlay", "satchel-overlay"];
+// Regression guard: a fixed element that uses a non-none `display` (flex,
+// inline-flex, etc.) will keep showing — and, if full-screen, keep intercepting
+// clicks — even when it has the `hidden` attribute, because that display value
+// overrides `hidden`'s default `display: none`. Every such element MUST have an
+// explicit `[hidden]` rule. This caused two bugs: an invisible movie modal that
+// froze the whole game, and a "Now showing" banner that appeared on load.
+const OVERLAYS = ["movie-overlay", "satchel-overlay", "movie-screen"];
 
 for (const name of OVERLAYS) {
   test(`KPF UI: .${name} is fully hidden (not just transparent) when [hidden]`, () => {
