@@ -15,11 +15,16 @@
   let saveTimer = null;
 
   // ── API helpers ──────────────────────────────────────────────────────────
+  // Base URL for the backend. Empty string = same origin (local dev / server).
+  // config.js can point this at a remote host (e.g. when on GitHub Pages).
+  const API_BASE = (window.TICKET_BOOTH_API || "").replace(/\/$/, "");
+  const apiUrl = (path) => `${API_BASE}${path}`;
+
   async function api(path, { method = "GET", body, auth = false } = {}) {
     const headers = {};
     if (body) headers["Content-Type"] = "application/json";
     if (auth && token) headers["Authorization"] = `Bearer ${token}`;
-    const response = await fetch(path, {
+    const response = await fetch(apiUrl(path), {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,

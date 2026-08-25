@@ -30,6 +30,29 @@ function sendJson(response, status, payload) {
   response.end(body);
 }
 
+// Allow the game (served from GitHub Pages or anywhere else) to call this API
+// from a different origin. Set ALLOWED_ORIGINS to a comma-separated list to
+// lock it down; defaults to "*" so it works out of the box.
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "*")
+  .split(",")
+  .map((entry) => entry.trim())
+  .filter(Boolean);
+
+function corsHeaders(request) {
+  const origin = request.headers.origin;
+  let allow = "*";
+  if (!ALLOWED_ORIGINS.includes("*")) {
+    allow = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0] || "";
+  }
+  return {
+    "Access-Control-Allow-Origin": allow,
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Max-Age": "86400",
+    Vary: "Origin",
+  };
+}
+
 function readBody(request) {
   return new Promise((resolve, reject) => {
     let raw = "";
@@ -123,6 +146,17 @@ function serveStatic(request, response, urlPath) {
 const server = http.createServer((request, response) => {
   const urlPath = request.url.split("?")[0];
   if (urlPath.startsWith("/api/")) {
+    // Apply CORS to every API response so the game can be hosted elsewhere
+    // (e.g. GitHub Pages) and still call this backend.
+    for (const [key, value] of Object.entries(corsHeaders(request))) {
+      response.setHeader(key, value);
+    }
+    // Preflight: answer OPTIONS immediately.
+    if (request.method === "OPTIONS") {
+      response.writeHead(204);
+      response.end();
+      return;
+    }
     handleApi(request, response, urlPath).catch((error) => {
       sendJson(response, 400, { ok: false, error: error.message || "Bad request" });
     });
@@ -132,7 +166,7 @@ const server = http.createServer((request, response) => {
 });
 
 if (require.main === module) {
-  server.listen(PORT, () =>
+  server.listen(PORT, "0.0.0.0", () =>
     console.log(`Ticket Booth is running at http://localhost:${PORT}`)
   );
 }

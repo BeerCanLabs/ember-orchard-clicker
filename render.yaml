@@ -1,0 +1,29 @@
+# Render.com deployment blueprint for the Ticket Booth backend.
+#
+# One-time setup (see DEPLOY.md for the full walkthrough):
+#   1. Push this repo to GitHub (already done).
+#   2. On render.com → New → Blueprint → pick this repo.
+#   3. Render reads this file and creates the service + persistent disk.
+#   4. Copy the service URL (e.g. https://ticket-booth.onrender.com) into
+#      config.js as window.TICKET_BOOTH_API, then commit.
+#
+# No dependencies to install — the server uses only Node built-ins.
+
+services:
+  - type: web
+    name: ticket-booth
+    runtime: node
+    plan: free
+    buildCommand: "echo no build needed"
+    startCommand: "node server.js"
+    envVars:
+      # Persist accounts to the mounted disk so they survive restarts/deploys.
+      - key: TICKET_BOOTH_DATA
+        value: /var/data/accounts.json
+      # Lock CORS to your game's origin. Update if your Pages URL differs.
+      - key: ALLOWED_ORIGINS
+        value: "https://bestdax.github.io"
+    disk:
+      name: ticket-booth-data
+      mountPath: /var/data
+      sizeGB: 1
