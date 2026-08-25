@@ -44,6 +44,7 @@ const format = (number) => Math.floor(number).toLocaleString();
 // showing, or null when no movie is playing. Declared early so render() — which
 // runs during initial mount — can safely read it.
 let movieStartedAt = null;
+let movieSafetyTimer = null;
 const prefersReducedMotion = () =>
   window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -774,7 +775,13 @@ $("reset-button").addEventListener("click", () => {
 setInterval(() => {
   const cps = perSecond(state.owned, state.inventory);
   if (cps > 0) state.embers += cps / 10;
-  tickMovie();
+  try {
+    tickMovie();
+  } catch (error) {
+    // A movie glitch must never freeze the whole game — end the showing safely.
+    console.error("movie tick failed:", error);
+    stopMovie();
+  }
   render();
 }, 100);
 
@@ -820,11 +827,16 @@ function startMovie() {
   if (screen) screen.hidden = false;
   $("status").textContent = "🎬 Now showing! Bonus tickets are rolling in.";
   updateMovieUi(0);
+  // Hard safety net: guarantee the showing ends even if the tick loop stalls.
+  clearTimeout(movieSafetyTimer);
+  movieSafetyTimer = setTimeout(stopMovie, (MOVIE_TOTAL_SECONDS + 1) * 1000);
   render();
   save();
 }
 
 function stopMovie() {
+  clearTimeout(movieSafetyTimer);
+  movieSafetyTimer = null;
   movieStartedAt = null;
   document.body.classList.remove("movie-playing");
   const screen = $("movie-screen");

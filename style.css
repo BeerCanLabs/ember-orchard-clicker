@@ -1680,6 +1680,7 @@ h1 {
   bottom: 5.5rem;
   transform: translateX(-50%);
   z-index: 49;
+  pointer-events: none;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
