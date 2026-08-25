@@ -158,25 +158,33 @@
       <p id="status" class="status" aria-live="polite">The ticket booth is quiet. For now.</p>
     </main>
 
-    <!-- Movie projector: fixed bottom-right 3D projector (pure CSS, no images) -->
+    <!-- Movie projector: fixed bottom-right retro badge button (flat, no images) -->
     <button type="button" class="movie-button" id="movie-button" title="Play a movie" aria-label="Play a movie">
-      <span class="projector" aria-hidden="true">
-        <span class="projector-beam"></span>
-        <span class="projector-reel projector-reel--feed">
-          <span class="projector-reel-spoke"></span>
-          <span class="projector-reel-spoke"></span>
-          <span class="projector-reel-spoke"></span>
-        </span>
-        <span class="projector-reel projector-reel--take">
-          <span class="projector-reel-spoke"></span>
-          <span class="projector-reel-spoke"></span>
-          <span class="projector-reel-spoke"></span>
-        </span>
-        <span class="projector-body">
-          <span class="projector-led"></span>
-          <span class="projector-lens"><span class="projector-lens-glow"></span></span>
-        </span>
-        <span class="projector-stand"></span>
+      <span class="projector-badge" aria-hidden="true">
+        <svg class="projector-glyph" width="38" height="32" viewBox="0 0 38 32">
+          <!-- feed reel (spins while playing) -->
+          <g class="reel reel--feed">
+            <circle class="b" cx="10" cy="9" r="7"/>
+            <circle class="hub" cx="10" cy="9" r="2"/>
+            <rect class="spoke" x="9" y="2.5" width="2" height="13" rx="1"/>
+            <rect class="spoke" x="9" y="2.5" width="2" height="13" rx="1" transform="rotate(60 10 9)"/>
+            <rect class="spoke" x="9" y="2.5" width="2" height="13" rx="1" transform="rotate(120 10 9)"/>
+          </g>
+          <!-- take-up reel (spins while playing) -->
+          <g class="reel reel--take">
+            <circle class="b" cx="24" cy="10" r="5.5"/>
+            <circle class="hub" cx="24" cy="10" r="1.6"/>
+            <rect class="spoke" x="23.1" y="5" width="1.8" height="10" rx="0.9"/>
+            <rect class="spoke" x="23.1" y="5" width="1.8" height="10" rx="0.9" transform="rotate(60 24 10)"/>
+            <rect class="spoke" x="23.1" y="5" width="1.8" height="10" rx="0.9" transform="rotate(120 24 10)"/>
+          </g>
+          <!-- body + lens -->
+          <rect class="b" x="3" y="16" width="24" height="12" rx="3"/>
+          <path class="b lens-barrel" d="M27 19 L37 16 L37 28 L27 25 Z"/>
+          <!-- light beam (shows while playing) -->
+          <path class="beam" d="M27 21 L38 17 L38 27 L27 24 Z"/>
+        </svg>
+        <span class="projector-label">MOVIE<small class="projector-sub">PROJECTOR</small></span>
       </span>
       <span class="movie-badge" id="movie-badge">
         <span class="movie-time-left" id="movie-time-left"></span>
@@ -208,7 +216,7 @@
       </div>
     </div>
 
-    <script src="game-core.js?v=5"></script>
-    <script src="app.js?v=5"></script>
+    <script src="game-core.js?v=6"></script>
+    <script src="app.js?v=6"></script>
   </body>
 </html>
