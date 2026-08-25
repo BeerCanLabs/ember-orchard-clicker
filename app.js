@@ -744,7 +744,7 @@ $("reset-button").addEventListener("click", () => {
   state.exp = 0;
   state.inventory = normalizeInventory([]);
   state.magicPoints = 0;
-  $("status").textContent = "A fresh booth awaits.";
+  $("status").textContent = "A fresh ticket booth awaits.";
   resetCurtainSlots();
   closeSatchel();
   render();
