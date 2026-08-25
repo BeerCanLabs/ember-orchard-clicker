@@ -1623,3 +1623,138 @@ h1 {
     transform: none;
   }
 }
+
+/* ── Movie projector boost ────────────────────────────────────────────────── */
+
+.movie-button {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--shop-trim);
+  border-radius: 16px;
+  background: linear-gradient(160deg, #241826 0%, #150d18 100%);
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  transition: transform 0.12s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.movie-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: var(--orange);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.55);
+}
+.movie-button:active:not(:disabled) { transform: translateY(0) scale(0.97); }
+.movie-button:disabled { opacity: 0.5; cursor: not-allowed; }
+.movie-icon { font-size: 1.6rem; line-height: 1; }
+
+.movie-badge {
+  display: none;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.1;
+  font-size: 0.72rem;
+}
+.movie-button.is-playing .movie-badge { display: inline-flex; }
+.movie-button.is-playing {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 2px rgba(255, 138, 76, 0.35), 0 16px 38px rgba(0, 0, 0, 0.55);
+  animation: movie-pulse 1.4s ease-in-out infinite;
+}
+.movie-time-left { color: var(--muted); }
+.movie-rate { color: var(--orange); font-weight: 500; }
+
+@keyframes movie-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(255, 138, 76, 0.30), 0 16px 38px rgba(0, 0, 0, 0.55); }
+  50% { box-shadow: 0 0 0 5px rgba(255, 138, 76, 0.12), 0 16px 38px rgba(0, 0, 0, 0.55); }
+}
+
+/* Ambient "now showing" banner + subtle screen flicker on the page */
+.movie-screen {
+  position: fixed;
+  left: 50%;
+  bottom: 5.5rem;
+  transform: translateX(-50%);
+  z-index: 49;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--shop-trim);
+  border-radius: 999px;
+  background: rgba(21, 13, 24, 0.9);
+  color: var(--ink);
+  font-size: 0.85rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.movie-screen-reel { animation: reel-spin 2.2s linear infinite; display: inline-block; }
+@keyframes reel-spin { to { transform: rotate(360deg); } }
+
+body.movie-playing::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(ellipse 70% 55% at 50% 40%, rgba(255, 200, 120, 0.08), transparent 70%);
+  animation: projector-flicker 0.9s steps(6) infinite;
+}
+@keyframes projector-flicker {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.85; }
+}
+
+/* Play-a-movie modal */
+.movie-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(5, 4, 10, 0.72);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.movie-overlay.is-open { opacity: 1; }
+.movie-panel {
+  width: min(24rem, 100%);
+  text-align: center;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 1.75rem 1.5rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  transform: translateY(8px) scale(0.98);
+  transition: transform 0.2s ease;
+}
+.movie-overlay.is-open .movie-panel { transform: translateY(0) scale(1); }
+.movie-panel-icon { font-size: 2.4rem; }
+.movie-title { font-family: "Fraunces", serif; margin: 0.4rem 0 0; font-size: 1.5rem; color: var(--ink); }
+.movie-blurb { color: var(--muted); font-size: 0.88rem; line-height: 1.5; margin: 0.75rem 0 1.25rem; }
+.movie-actions { display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; }
+.movie-play, .movie-cancel {
+  border-radius: 10px;
+  padding: 0.65rem 1.1rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.movie-play { border: none; background: var(--orange); color: var(--buy-ink); font-weight: 500; }
+.movie-play:hover { background: #ffa066; }
+.movie-cancel { border: 1px solid var(--line); background: var(--cream-hover); color: var(--ink); }
+.movie-cancel:hover { background: var(--cream); }
+.movie-play:active, .movie-cancel:active { transform: scale(0.97); }
+
+@media (prefers-reduced-motion: reduce) {
+  .movie-button.is-playing,
+  .movie-screen-reel,
+  body.movie-playing::after { animation: none; }
+}

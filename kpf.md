@@ -23,6 +23,10 @@ Each KPF below is a user-visible promise. Its automated test must continue to pa
 | Iron Helmet | Owning at least one Iron Helmet grants **+10% tickets/sec**; extra helmets do not stack the bonus. | `iron helmet grants a non-stacking 10 percent passive bonus` |
 | Milestone loot | Every **5** levels is a milestone; loot rolls Dice/Cards/Pictures often and Iron Helmet rarely. | `milestone levels are every five and item rolls include rare helmet` |
 | Prestige | Costs **200,000** tickets; resets tickets, upgrades, level/XP, and satchel items; awards **+1 magic point** (magic has no effect yet). | `prestige costs 200000 and awards one magic point while wiping the run` |
+| Movie cost | Playing a movie costs **1,000** tickets. | `a movie costs 1000 tickets to play` |
+| Movie peak | While playing, a movie grants a flat **1,000 bonus tickets/sec for the first 15 seconds**. | `a playing movie grants a flat 1000 tickets/sec for the first 15 seconds` |
+| Movie fade | After 15s the bonus **fades gradually** (progressively fewer tickets), hitting **0 at 60s** — half rate at the fade midpoint. | `after the peak window a movie gives progressively fewer tickets, reaching zero at 60s` |
+| Movie length | A showing plays for about **one minute** (0–60s), then stops. | `a movie plays for about one minute then stops` |
 
 ## Test command
 
@@ -43,6 +47,10 @@ Player level is shown as a fixed circle in the **top-left**, with a ring filling
 ## UI note (prestige)
 
 A prestige bar under the stats board spends **200,000** tickets to wipe the current run and bank **+1 magic point**. Magic points are shown in the stats board and currently do nothing.
+
+## UI note (movie projector)
+
+A fixed **movie-projector button (🎥)** sits in the **bottom-right**. Clicking it opens a "Play a movie?" prompt; confirming spends **1,000** tickets and starts a showing. While a movie plays, the button pulses and shows the remaining time and current bonus rate, a "Now showing" banner appears, and the page gets a subtle projector flicker. The showing pours in bonus tickets at a flat 1,000/sec for 15s, then fades to 0 by 60s, after which it stops on its own. The playing state is **runtime-only** (not saved), so reloading mid-movie ends it rather than letting it be paused/resumed for exploit.
 
 ## Dev note (temporary)
 

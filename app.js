@@ -18,11 +18,15 @@ const {
   rollMilestoneItem,
   isMilestoneLevel,
   milestoneAnimation,
+  movieRate,
+  movieIsPlaying,
   INVENTORY_SIZE,
   CLICK_EXP,
   BUY_EXP,
   MAX_OWNED,
   PRESTIGE_COST,
+  MOVIE_COST,
+  MOVIE_TOTAL_SECONDS,
 } = window.GameCore;
 
 const saved = JSON.parse(localStorage.getItem("ember-orchard-save") || "{}");
@@ -36,6 +40,10 @@ const state = {
 
 const $ = (id) => document.getElementById(id);
 const format = (number) => Math.floor(number).toLocaleString();
+// Movie projector runtime state (not persisted): ms timestamp of the current
+// showing, or null when no movie is playing. Declared early so render() — which
+// runs during initial mount — can safely read it.
+let movieStartedAt = null;
 const prefersReducedMotion = () =>
   window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -440,6 +448,17 @@ function render() {
   $("owned-count").textContent = `${totalOwned(state.owned)} owned`;
   if ($("magic-points")) $("magic-points").textContent = format(state.magicPoints);
 
+  const movieBtn = $("movie-button");
+  if (movieBtn) {
+    const playing = movieStartedAt != null;
+    // Disabled only when you can't afford a *new* showing and none is playing.
+    movieBtn.disabled = !playing && state.embers < MOVIE_COST;
+    movieBtn.setAttribute(
+      "aria-label",
+      playing ? "Movie playing" : `Play a movie for ${format(MOVIE_COST)} tickets`
+    );
+  }
+
   const prestigeBtn = $("prestige-button");
   if (prestigeBtn) {
     const can = state.embers >= PRESTIGE_COST;
@@ -755,6 +774,7 @@ $("reset-button").addEventListener("click", () => {
 setInterval(() => {
   const cps = perSecond(state.owned, state.inventory);
   if (cps > 0) state.embers += cps / 10;
+  tickMovie();
   render();
 }, 100);
 
@@ -762,3 +782,109 @@ setInterval(save, 5000);
 mountUpgrades();
 mountInventory();
 render();
+
+// ── Movie projector boost ──────────────────────────────────────────────────
+// Playing a movie costs MOVIE_COST tickets, then showers bonus tickets at a
+// rate that starts flat and fades out over MOVIE_TOTAL_SECONDS. The "playing"
+// state (movieStartedAt, declared near the top) is runtime-only (not saved) so
+// it can't be exploited across reloads.
+
+function movieElapsed() {
+  if (movieStartedAt == null) return null;
+  return (Date.now() - movieStartedAt) / 1000;
+}
+
+/** Accrue bonus tickets for the current showing; end it when it's over. */
+function tickMovie() {
+  if (movieStartedAt == null) return;
+  const elapsed = movieElapsed();
+  if (!movieIsPlaying(elapsed)) {
+    stopMovie();
+    return;
+  }
+  const bonusPerSecond = movieRate(elapsed);
+  if (bonusPerSecond > 0) state.embers += bonusPerSecond / 10; // 100ms tick
+  updateMovieUi(elapsed);
+}
+
+function startMovie() {
+  if (movieStartedAt != null) return; // already showing
+  if (state.embers < MOVIE_COST) {
+    $("status").textContent = `Need ${format(MOVIE_COST)} tickets to play a movie.`;
+    return;
+  }
+  state.embers -= MOVIE_COST;
+  movieStartedAt = Date.now();
+  document.body.classList.add("movie-playing");
+  const screen = $("movie-screen");
+  if (screen) screen.hidden = false;
+  $("status").textContent = "🎬 Now showing! Bonus tickets are rolling in.";
+  updateMovieUi(0);
+  render();
+  save();
+}
+
+function stopMovie() {
+  movieStartedAt = null;
+  document.body.classList.remove("movie-playing");
+  const screen = $("movie-screen");
+  if (screen) screen.hidden = true;
+  const btn = $("movie-button");
+  if (btn) btn.classList.remove("is-playing");
+  $("status").textContent = "The reel runs out. Curtains for now.";
+  render();
+  save();
+}
+
+function updateMovieUi(elapsed) {
+  const btn = $("movie-button");
+  if (btn) btn.classList.toggle("is-playing", movieStartedAt != null);
+  const timeLeft = $("movie-time-left");
+  if (timeLeft && movieStartedAt != null) {
+    const remaining = Math.max(0, Math.ceil(MOVIE_TOTAL_SECONDS - elapsed));
+    timeLeft.textContent = `${remaining}s`;
+  }
+  const rateLabel = $("movie-rate");
+  if (rateLabel && movieStartedAt != null) {
+    rateLabel.textContent = `+${format(movieRate(elapsed))}/s`;
+  }
+}
+
+function openMoviePrompt() {
+  if (movieStartedAt != null) return; // already playing
+  const overlay = $("movie-overlay");
+  if (!overlay) {
+    // No modal in the DOM — just start directly.
+    startMovie();
+    return;
+  }
+  overlay.hidden = false;
+  requestAnimationFrame(() => overlay.classList.add("is-open"));
+}
+
+function closeMoviePrompt() {
+  const overlay = $("movie-overlay");
+  if (!overlay) return;
+  overlay.classList.remove("is-open");
+  setTimeout(() => {
+    if (!overlay.classList.contains("is-open")) overlay.hidden = true;
+  }, 200);
+}
+
+if ($("movie-button")) {
+  $("movie-button").addEventListener("click", openMoviePrompt);
+}
+if ($("movie-play")) {
+  $("movie-play").addEventListener("click", () => {
+    closeMoviePrompt();
+    startMovie();
+  });
+}
+if ($("movie-cancel")) {
+  $("movie-cancel").addEventListener("click", closeMoviePrompt);
+}
+if ($("movie-overlay")) {
+  $("movie-overlay").addEventListener("click", (event) => {
+    if (event.target === $("movie-overlay")) closeMoviePrompt();
+  });
+}

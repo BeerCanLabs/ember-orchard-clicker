@@ -263,3 +263,53 @@ test("KPF: prestige costs 200000 and awards one magic point while wiping the run
   assert.equal(before.magicPoints, 2);
   assert.equal(before.owned.lantern, 12);
 });
+
+const {
+  movieRate,
+  movieIsPlaying,
+  MOVIE_COST,
+  MOVIE_PEAK_RATE,
+  MOVIE_PEAK_SECONDS,
+  MOVIE_TOTAL_SECONDS,
+} = require("../game-core.js");
+
+test("KPF: a movie costs 1000 tickets to play", () => {
+  assert.equal(MOVIE_COST, 1000);
+});
+
+test("KPF: a playing movie grants a flat 1000 tickets/sec for the first 15 seconds", () => {
+  assert.equal(MOVIE_PEAK_RATE, 1000);
+  assert.equal(MOVIE_PEAK_SECONDS, 15);
+  assert.equal(movieRate(0), 1000);
+  assert.equal(movieRate(7.5), 1000);
+  assert.equal(movieRate(14.999), 1000);
+  // At exactly 15s the flat window ends and the fade begins at full rate.
+  assert.equal(movieRate(15), 1000);
+});
+
+test("KPF: after the peak window a movie gives progressively fewer tickets, reaching zero at 60s", () => {
+  assert.equal(MOVIE_TOTAL_SECONDS, 60);
+  // Halfway through the 15s→60s fade (37.5s) the rate is half of peak.
+  assert.equal(movieRate(37.5), 500);
+  // Later in the fade it is strictly lower than earlier.
+  assert.ok(movieRate(50) < movieRate(30));
+  assert.ok(movieRate(30) < movieRate(20));
+  // It never goes negative and is zero once the showing ends.
+  assert.equal(movieRate(60), 0);
+  assert.equal(movieRate(120), 0);
+});
+
+test("KPF: a movie plays for about one minute then stops", () => {
+  assert.equal(movieIsPlaying(0), true);
+  assert.equal(movieIsPlaying(15), true);
+  assert.equal(movieIsPlaying(59.9), true);
+  assert.equal(movieIsPlaying(60), false);
+  assert.equal(movieIsPlaying(75), false);
+});
+
+test("movie rate ignores invalid or pre-start times", () => {
+  assert.equal(movieRate(-1), 0);
+  assert.equal(movieRate(NaN), 0);
+  assert.equal(movieIsPlaying(-5), false);
+});
+

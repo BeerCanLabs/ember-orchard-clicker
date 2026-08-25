@@ -157,6 +157,40 @@
       </section>
       <p id="status" class="status" aria-live="polite">The ticket booth is quiet. For now.</p>
     </main>
+
+    <!-- Movie projector: fixed bottom-right button -->
+    <button type="button" class="movie-button" id="movie-button" title="Play a movie" aria-label="Play a movie">
+      <span class="movie-icon" aria-hidden="true">🎥</span>
+      <span class="movie-badge" id="movie-badge">
+        <span class="movie-time-left" id="movie-time-left"></span>
+        <span class="movie-rate" id="movie-rate"></span>
+      </span>
+    </button>
+
+    <!-- "Now showing" ambient banner while a movie plays -->
+    <div class="movie-screen" id="movie-screen" aria-hidden="true" hidden>
+      <span class="movie-screen-reel">🎞️</span>
+      <span class="movie-screen-text">Now showing…</span>
+    </div>
+
+    <!-- Play-a-movie prompt -->
+    <div class="movie-overlay" id="movie-overlay" hidden>
+      <div class="movie-panel" role="dialog" aria-modal="true" aria-labelledby="movie-title">
+        <span class="movie-panel-icon" aria-hidden="true">🎬</span>
+        <h2 class="movie-title" id="movie-title">Play a movie?</h2>
+        <p class="movie-blurb">
+          Roll the projector for a ticket rush: a big burst of bonus tickets that
+          starts strong, then slowly fades out over about a minute.
+        </p>
+        <div class="movie-actions">
+          <button type="button" class="movie-play" id="movie-play">
+            Play — <span class="movie-cost">1,000</span> 🎟
+          </button>
+          <button type="button" class="movie-cancel" id="movie-cancel">Not now</button>
+        </div>
+      </div>
+    </div>
+
     <script src="game-core.js"></script>
     <script src="app.js"></script>
   </body>

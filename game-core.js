@@ -12,6 +12,35 @@
   const PRESTIGE_COST = 200000;
   const MAGIC_PER_PRESTIGE = 1;
 
+  // ── Movie projector boost ──────────────────────────────────────────────────
+  // Playing a movie costs tickets, then showers bonus tickets: a flat peak rate
+  // for the first stretch, then a slow linear fade to zero.
+  const MOVIE_COST = 1000; // tickets to start a showing
+  const MOVIE_PEAK_RATE = 1000; // bonus tickets/sec during the peak window
+  const MOVIE_PEAK_SECONDS = 15; // flat-rate window length
+  const MOVIE_TOTAL_SECONDS = 60; // total showing length (peak + fade)
+
+  /**
+   * Bonus tickets/sec from a movie at `elapsed` seconds into the showing.
+   * Flat MOVIE_PEAK_RATE for the first MOVIE_PEAK_SECONDS, then a linear fade
+   * down to 0 by MOVIE_TOTAL_SECONDS. Returns 0 before the start / after the end.
+   */
+  function movieRate(elapsed) {
+    const t = Number(elapsed);
+    if (!Number.isFinite(t) || t < 0) return 0;
+    if (t < MOVIE_PEAK_SECONDS) return MOVIE_PEAK_RATE;
+    if (t >= MOVIE_TOTAL_SECONDS) return 0;
+    const fadeSpan = MOVIE_TOTAL_SECONDS - MOVIE_PEAK_SECONDS;
+    const fadeProgress = (t - MOVIE_PEAK_SECONDS) / fadeSpan; // 0 → 1
+    return MOVIE_PEAK_RATE * (1 - fadeProgress);
+  }
+
+  /** True while a showing that started `elapsed` seconds ago is still running. */
+  function movieIsPlaying(elapsed) {
+    const t = Number(elapsed);
+    return Number.isFinite(t) && t >= 0 && t < MOVIE_TOTAL_SECONDS;
+  }
+
   // Shop order: clerk → season pass → queue runners → box office → double feature
   const upgrades = [
     { id: "lantern", icon: "▣", name: "Ticket clerk", note: "+1 ticket / second", baseCost: 25, cps: 1 },
@@ -274,6 +303,8 @@
     buyUpgrade,
     prestige,
     canPrestige,
+    movieRate,
+    movieIsPlaying,
     count,
     totalOwned,
     isMaxed,
@@ -302,5 +333,9 @@
     HELMET_CPS_BONUS,
     PRESTIGE_COST,
     MAGIC_PER_PRESTIGE,
+    MOVIE_COST,
+    MOVIE_PEAK_RATE,
+    MOVIE_PEAK_SECONDS,
+    MOVIE_TOTAL_SECONDS,
   };
 });
