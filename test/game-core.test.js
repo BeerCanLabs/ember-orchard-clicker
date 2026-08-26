@@ -45,10 +45,10 @@ test("KPF: ticket clerk is the first shop entry and costs 25", () => {
   assert.equal(price(byId("lantern"), {}), 25);
 });
 
-test("KPF: shop order ends with double feature after box office", () => {
+test("KPF: shop order ends with double feature then movie projector", () => {
   assert.deepEqual(
     upgrades.map((upgrade) => upgrade.id),
-    ["lantern", "roots", "moth", "grove", "premiere"]
+    ["lantern", "roots", "moth", "grove", "premiere", "projector"]
   );
 });
 
@@ -276,8 +276,8 @@ const {
   MOVIE_TOTAL_SECONDS,
 } = require("../game-core.js");
 
-test("KPF: a movie costs 1000 tickets to play", () => {
-  assert.equal(MOVIE_COST, 1000);
+test("KPF: a movie costs 10000 tickets to play (10× the old price)", () => {
+  assert.equal(MOVIE_COST, 10000);
 });
 
 test("KPF: a playing movie grants a flat 1000 tickets/sec for the first 15 seconds", () => {
@@ -332,9 +332,9 @@ test("KPF: there are two playable movies to choose from", () => {
   }
 });
 
-test("KPF: the default movie is the matinee (feature 1) at 1000 cost / 1000 per sec", () => {
+test("KPF: the default movie is the matinee (feature 1) at 10000 cost / 1000 per sec", () => {
   assert.equal(DEFAULT_MOVIE_ID, "matinee");
-  assert.equal(MOVIES.matinee.cost, 1000);
+  assert.equal(MOVIES.matinee.cost, 10000);
   assert.equal(MOVIES.matinee.peakRate, 1000);
 });
 
@@ -379,5 +379,82 @@ test("movieById falls back to the default for unknown or missing ids", () => {
 
 test("an unknown movieId uses the default movie's rate", () => {
   assert.equal(movieRate(0, "does-not-exist"), MOVIES.matinee.peakRate);
+});
+
+// ── Movie projector purchase + level gates ───────────────────────────────────
+
+const { movieUnlockedAtLevel, MOVIE_PROJECTOR_ID } = require("../game-core.js");
+
+test("KPF: the movie projector is a one-time 10000-ticket shop upgrade unlocked at level 15", () => {
+  const projector = byId(MOVIE_PROJECTOR_ID);
+  assert.ok(projector, "projector upgrade exists in the shop");
+  assert.equal(price(projector, {}), 10000);
+  assert.equal(maxFor(projector), 1);
+  // Locked below level 15, buyable at 15, and only once.
+  assert.equal(isUnlocked(projector, {}, { level: 14 }), false);
+  assert.equal(buyUpgrade({ embers: 1e9, owned: {} }, "projector", { level: 14 }).reason, "locked");
+  const bought = buyUpgrade({ embers: 1e9, owned: {} }, "projector", { level: 15 });
+  assert.equal(bought.ok, true);
+  assert.equal(bought.state.owned.projector, 1);
+  const again = buyUpgrade({ embers: 1e9, owned: bought.state.owned }, "projector", { level: 99 });
+  assert.equal(again.ok, false);
+  assert.equal(again.reason, "maxed");
+});
+
+test("KPF: the projector does not change ticket earnings", () => {
+  // Owning the projector must not add cps/click/multiplier.
+  const withoutProjector = { lantern: 5 };
+  const withProjector = { lantern: 5, projector: 1 };
+  assert.equal(perSecond(withProjector, []), perSecond(withoutProjector, []));
+  assert.equal(perClick(withProjector), perClick(withoutProjector));
+});
+
+test("KPF: the matinee unlocks at level 15, the premiere at level 20", () => {
+  assert.equal(MOVIES.matinee.unlockAtLevel, 15);
+  assert.equal(MOVIES.premiere.unlockAtLevel, 20);
+  // Matinee gate
+  assert.equal(movieUnlockedAtLevel("matinee", 14), false);
+  assert.equal(movieUnlockedAtLevel("matinee", 15), true);
+  // Premiere gate
+  assert.equal(movieUnlockedAtLevel("premiere", 19), false);
+  assert.equal(movieUnlockedAtLevel("premiere", 20), true);
+  // At level 15–19 you can play the matinee but not the premiere.
+  assert.equal(movieUnlockedAtLevel("matinee", 17), true);
+  assert.equal(movieUnlockedAtLevel("premiere", 17), false);
+});
+
+test("KPF: the premiere (feature 2) costs 50000 tickets (10× the old price)", () => {
+  assert.equal(MOVIES.premiere.cost, 50000);
+});
+
+// ── Level curve: steep 1–10, then flatten to an ordinary-upgrade ramp ─────────
+
+test("KPF: levels 1–10 keep the original steep exp curve", () => {
+  // These are the original 1.32× ramp values and must not change.
+  assert.equal(expRequiredForLevel(1), 12);
+  assert.equal(expRequiredForLevel(5), 36);
+  assert.equal(expRequiredForLevel(9), 110);
+  assert.equal(expRequiredForLevel(10), 145);
+});
+
+test("KPF: after level 10 the exp curve grows gently (ordinary-upgrade rate), not explosively", () => {
+  // Each step after 10 grows by the ordinary-upgrade factor (~1.16×), far
+  // slower than the old 1.32× ramp, so high levels stay reachable.
+  const r11 = expRequiredForLevel(11);
+  const r12 = expRequiredForLevel(12);
+  const r20 = expRequiredForLevel(20);
+
+  // Still strictly increasing.
+  assert.ok(r12 > r11);
+  // Growth factor after 10 is close to 1.16 and well under the old 1.32.
+  const factor = r12 / r11;
+  assert.ok(factor > 1.1 && factor < 1.25, `expected ~1.16 growth, got ${factor}`);
+
+  // The old curve would have demanded far more to reach level 20.
+  const oldR20 = Math.floor(12 * Math.pow(1.32, 19));
+  assert.ok(r20 < oldR20 / 2, `new L20 (${r20}) should be well below old L20 (${oldR20})`);
+
+  // No discontinuity at the seam: L10→11 continues smoothly.
+  assert.ok(r11 > expRequiredForLevel(10));
 });
 

@@ -26,19 +26,24 @@
     matinee: {
       id: "matinee",
       title: "The Afternoon Matinee",
-      cost: 1000, // tickets to start a showing
+      cost: 10000, // tickets to start a showing (10× the old price)
       peakRate: 1000, // bonus tickets/sec during the flat peak window
+      unlockAtLevel: 15, // movies unlock at level 15
       blurb: "A cozy short reel — a steady rush of bonus tickets.",
     },
     premiere: {
       id: "premiere",
       title: "The Grand Premiere",
-      cost: 5000, // pricier than the matinee
+      cost: 50000, // pricier than the matinee (10× the old price)
       peakRate: 4000, // but pours in far more per second
+      unlockAtLevel: 20, // the second feature stays locked until level 20
       blurb: "The big-ticket feature — costs more, but pays out much faster.",
     },
   };
   const DEFAULT_MOVIE_ID = "matinee";
+
+  // Playing any movie first requires owning the projector, bought in the shop.
+  const MOVIE_PROJECTOR_ID = "projector";
 
   /** Look up a movie by id, falling back to the default feature. */
   function movieById(movieId) {
@@ -80,6 +85,12 @@
     return Number.isFinite(t) && t >= 0 && t < MOVIE_TOTAL_SECONDS;
   }
 
+  /** True once the player level is high enough for this movie (matinee 15, premiere 20). */
+  function movieUnlockedAtLevel(movieId, level) {
+    const need = movieById(movieId).unlockAtLevel || 1;
+    return (Number(level) || 1) >= need;
+  }
+
   // Shop order: clerk → season pass → queue runners → box office → double feature
   const upgrades = [
     { id: "lantern", icon: "▣", name: "Ticket clerk", note: "+1 ticket / second", baseCost: 25, cps: 1 },
@@ -96,6 +107,15 @@
       maxOwned: 1,
       unlockAtLevel: 10,
       reveal: "curtains",
+    },
+    {
+      id: "projector",
+      icon: "🎬",
+      name: "Movie projector",
+      note: "Unlocks the movie feature",
+      baseCost: 10000,
+      maxOwned: 1,
+      unlockAtLevel: 15,
     },
   ];
 
@@ -228,7 +248,14 @@
   /** EXP needed to advance from `level` → `level + 1` (level is 1-based). */
   function expRequiredForLevel(level) {
     const safe = Math.max(1, Math.floor(level || 1));
-    return Math.floor(12 * Math.pow(1.32, safe - 1));
+    // Levels 1–10 keep the original steep 1.32× ramp (the fun early game).
+    // From level 10 onward the curve flattens to an ordinary-upgrade 1.16×
+    // growth so higher levels stay reachable instead of ballooning.
+    if (safe <= 10) {
+      return Math.floor(12 * Math.pow(1.32, safe - 1));
+    }
+    const base10 = 12 * Math.pow(1.32, 9); // the L10 requirement, continued smoothly
+    return Math.floor(base10 * Math.pow(1.16, safe - 10));
   }
 
   /** Derive level progress from lifetime EXP. */
@@ -344,9 +371,11 @@
     canPrestige,
     movieRate,
     movieIsPlaying,
+    movieUnlockedAtLevel,
     movieById,
     MOVIES,
     DEFAULT_MOVIE_ID,
+    MOVIE_PROJECTOR_ID,
     count,
     totalOwned,
     isMaxed,

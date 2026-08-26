@@ -1627,6 +1627,7 @@ h1 {
 /* ── Movie projector boost ────────────────────────────────────────────────── */
 
 /* ── Retro-badge projector button (Design 3, flat) ─────────────────────────── */
+.movie-button[hidden] { display: none !important; }
 .movie-button {
   position: fixed;
   right: 1.25rem;
@@ -1704,29 +1705,77 @@ h1 {
 
 /* ── Powered-on state: the badge "runs the reel" while a movie plays ───────── */
 .movie-button.is-playing {
-  animation: movie-pulse 1.4s ease-in-out infinite;
+  animation: movie-glow 2s ease-in-out infinite, movie-shake 0.16s steps(2) infinite;
+  background: linear-gradient(135deg, #ffb072, var(--orange));
 }
-/* Reels spin — the always-on animation you asked to keep. Different speeds so
+/* A warm projected light-cone spilling out to the left, only while playing. */
+.movie-button.is-playing::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  width: 120px;
+  height: 64px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  background: linear-gradient(
+    to left,
+    rgba(255, 226, 160, 0.55),
+    rgba(255, 216, 150, 0.18) 45%,
+    transparent 80%
+  );
+  clip-path: polygon(100% 32%, 100% 68%, 0 100%, 0 0);
+  filter: blur(1px);
+  animation: cone-shimmer 0.42s steps(4) infinite;
+}
+/* Reels spin — the always-on animation you asked to keep, now with a subtle
+   ease so they feel like they're catching sprocket teeth. Different speeds so
    the two reels look mechanically linked but distinct. */
 .movie-button.is-playing .projector-glyph .reel--feed {
-  animation: reel-spin 1.5s linear infinite;
+  animation: reel-spin 1.3s cubic-bezier(0.36, 0.05, 0.36, 1) infinite;
 }
 .movie-button.is-playing .projector-glyph .reel--take {
-  animation: reel-spin 1s linear infinite;
+  animation: reel-spin 0.85s cubic-bezier(0.36, 0.05, 0.36, 1) infinite;
 }
 /* The light beam switches on and flickers like a real projector. */
 .movie-button.is-playing .projector-glyph .beam {
   opacity: 0.95;
-  animation: beam-flicker 0.5s steps(3) infinite;
+  animation: beam-flicker 0.38s steps(3) infinite;
+}
+/* The hub of each reel glows hotter while running. */
+.movie-button.is-playing .projector-glyph .hub {
+  animation: hub-pulse 0.7s ease-in-out infinite;
 }
 
-@keyframes movie-pulse {
-  0%, 100% { box-shadow: 0 0 0 2px rgba(255, 138, 76, 0.55), 0 12px 28px rgba(0, 0, 0, 0.5); }
-  50% { box-shadow: 0 0 0 6px rgba(255, 138, 76, 0.20), 0 12px 28px rgba(0, 0, 0, 0.5); }
+/* Smooth expanding halo instead of a single hard ring. */
+@keyframes movie-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgba(255, 170, 90, 0.6),
+      0 0 18px 2px rgba(255, 150, 70, 0.35), 0 12px 28px rgba(0, 0, 0, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(255, 170, 90, 0.12),
+      0 0 30px 8px rgba(255, 150, 70, 0.55), 0 12px 28px rgba(0, 0, 0, 0.5);
+  }
+}
+/* A tiny mechanical jitter — the projector "running". */
+@keyframes movie-shake {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(0.4px, -0.4px); }
+  100% { transform: translate(-0.4px, 0.3px); }
+}
+@keyframes cone-shimmer {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.55; }
+}
+@keyframes hub-pulse {
+  0%, 100% { fill: var(--orange); }
+  50% { fill: #fff2cf; }
 }
 @keyframes beam-flicker {
   0%, 100% { opacity: 0.95; }
-  50% { opacity: 0.55; }
+  40% { opacity: 0.6; }
+  70% { opacity: 0.85; }
 }
 @keyframes reel-spin { to { transform: rotate(360deg); } }
 
@@ -1820,6 +1869,18 @@ body.movie-playing::after {
 .movie-choice:hover:not(:disabled) { border-color: var(--orange); background: var(--cream); }
 .movie-choice:active:not(:disabled) { transform: scale(0.98); }
 .movie-choice:disabled { opacity: 0.5; cursor: not-allowed; }
+.movie-choice.is-locked {
+  border-style: dashed;
+  border-color: var(--line);
+  background: repeating-linear-gradient(
+    45deg,
+    var(--cream-hover),
+    var(--cream-hover) 8px,
+    rgba(0, 0, 0, 0.03) 8px,
+    rgba(0, 0, 0, 0.03) 16px
+  );
+}
+.movie-choice.is-locked .movie-choice-cost { color: var(--muted); }
 .movie-choice-info { display: flex; flex-direction: column; gap: 0.15rem; }
 .movie-choice-title { font-weight: 600; font-size: 0.95rem; }
 .movie-choice-desc { color: var(--muted); font-size: 0.78rem; line-height: 1.35; }
@@ -1848,9 +1909,11 @@ body.movie-playing::after {
 
 @media (prefers-reduced-motion: reduce) {
   .movie-button.is-playing,
+  .movie-button.is-playing::before,
   .movie-button.is-playing .projector-glyph .reel--feed,
   .movie-button.is-playing .projector-glyph .reel--take,
   .movie-button.is-playing .projector-glyph .beam,
+  .movie-button.is-playing .projector-glyph .hub,
   .movie-screen-reel,
   body.movie-playing::after { animation: none; }
 }

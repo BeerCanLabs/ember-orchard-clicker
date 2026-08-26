@@ -11,7 +11,7 @@ const css = fs.readFileSync(path.join(__dirname, "..", "style.css"), "utf8");
 // overrides `hidden`'s default `display: none`. Every such element MUST have an
 // explicit `[hidden]` rule. This caused two bugs: an invisible movie modal that
 // froze the whole game, and a "Now showing" banner that appeared on load.
-const OVERLAYS = ["movie-overlay", "satchel-overlay", "movie-screen"];
+const OVERLAYS = ["movie-overlay", "satchel-overlay", "movie-screen", "movie-button"];
 
 for (const name of OVERLAYS) {
   test(`KPF UI: .${name} is fully hidden (not just transparent) when [hidden]`, () => {

@@ -20,9 +20,11 @@ const {
   milestoneAnimation,
   movieRate,
   movieIsPlaying,
+  movieUnlockedAtLevel,
   movieById,
   MOVIES,
   DEFAULT_MOVIE_ID,
+  MOVIE_PROJECTOR_ID,
   INVENTORY_SIZE,
   CLICK_EXP,
   BUY_EXP,
@@ -61,6 +63,11 @@ function playerLevel() {
   return levelProgress(state.exp).level;
 }
 
+/** True once the player has bought the Movie projector upgrade. */
+function hasProjector() {
+  return (state.owned[MOVIE_PROJECTOR_ID] || 0) > 0;
+}
+
 function save() {
   localStorage.setItem(
     "ember-orchard-save",
@@ -89,6 +96,8 @@ function applyPrestige() {
     $("status").textContent = `Need ${format(PRESTIGE_COST)} tickets to prestige.`;
     return false;
   }
+  // A movie in progress must stop immediately on prestige — the run is wiped.
+  if (movieStartedAt != null) stopMovie();
   state.embers = result.state.embers;
   state.owned = result.state.owned;
   state.exp = result.state.exp;
@@ -457,14 +466,31 @@ function render() {
   const movieBtn = $("movie-button");
   if (movieBtn) {
     const playing = movieStartedAt != null;
+    const level = playerLevel();
+    const owned = hasProjector();
+    // The matinee (feature 1) unlocks at level 15; that's the earliest any movie
+    // can play. You also need to have bought the projector in the shop.
+    const levelReady = movieUnlockedAtLevel(DEFAULT_MOVIE_ID, level);
     // Cheapest movie sets the affordability threshold for opening the picker.
     const cheapest = Math.min(...Object.values(MOVIES).map((m) => m.cost));
-    // Disabled only when you can't afford *any* showing and none is playing.
-    movieBtn.disabled = !playing && state.embers < cheapest;
-    movieBtn.setAttribute(
-      "aria-label",
-      playing ? "Movie playing" : `Play a movie (from ${format(cheapest)} tickets)`
-    );
+    const canOpen = owned && levelReady && state.embers >= cheapest;
+    // Disabled unless a showing is running or the player can open the picker.
+    movieBtn.disabled = !playing && !canOpen;
+    // Hide the button entirely until the projector is owned — nothing to use yet.
+    movieBtn.hidden = !owned && !playing;
+
+    let label;
+    if (playing) {
+      label = "Movie playing";
+    } else if (!owned) {
+      label = "Buy the Movie projector to play movies";
+    } else if (!levelReady) {
+      label = `Movies unlock at level ${movieById(DEFAULT_MOVIE_ID).unlockAtLevel}`;
+    } else {
+      label = `Play a movie (from ${format(cheapest)} tickets)`;
+    }
+    movieBtn.setAttribute("aria-label", label);
+    movieBtn.title = label;
   }
 
   const prestigeBtn = $("prestige-button");
@@ -824,6 +850,14 @@ function tickMovie() {
 function startMovie(movieId) {
   if (movieStartedAt != null) return; // already showing
   const movie = movieById(movieId);
+  if (!hasProjector()) {
+    $("status").textContent = "You need the Movie projector before you can play movies.";
+    return;
+  }
+  if (!movieUnlockedAtLevel(movie.id, playerLevel())) {
+    $("status").textContent = `${movie.title} unlocks at level ${movie.unlockAtLevel}.`;
+    return;
+  }
   if (state.embers < movie.cost) {
     $("status").textContent = `Need ${format(movie.cost)} tickets for ${movie.title}.`;
     return;
@@ -873,17 +907,21 @@ function updateMovieUi(elapsed) {
   }
 }
 
-/** Build the two feature cards inside the modal, disabling any you can't afford. */
+/** Build the two feature cards inside the modal, locking any below your level. */
 function renderMovieChoices() {
   const wrap = $("movie-choices");
   if (!wrap) return;
   wrap.innerHTML = "";
+  const level = playerLevel();
   for (const movie of Object.values(MOVIES)) {
     const card = document.createElement("button");
     card.type = "button";
     card.className = "movie-choice";
     card.dataset.movie = movie.id;
-    card.disabled = state.embers < movie.cost;
+    const levelReady = movieUnlockedAtLevel(movie.id, level);
+    const affordable = state.embers >= movie.cost;
+    card.disabled = !levelReady || !affordable;
+    card.classList.toggle("is-locked", !levelReady);
 
     const info = document.createElement("span");
     info.className = "movie-choice-info";
@@ -892,13 +930,15 @@ function renderMovieChoices() {
     title.textContent = movie.title;
     const desc = document.createElement("span");
     desc.className = "movie-choice-desc";
-    desc.textContent = `${movie.blurb} (~${format(movie.peakRate)}/s at peak)`;
+    desc.textContent = levelReady
+      ? `${movie.blurb} (~${format(movie.peakRate)}/s at peak)`
+      : `🔒 Unlocks at level ${movie.unlockAtLevel}`;
     info.appendChild(title);
     info.appendChild(desc);
 
     const cost = document.createElement("span");
     cost.className = "movie-choice-cost";
-    cost.textContent = `${format(movie.cost)} 🎟`;
+    cost.textContent = levelReady ? `${format(movie.cost)} 🎟` : `Lvl ${movie.unlockAtLevel}`;
 
     card.appendChild(info);
     card.appendChild(cost);
@@ -913,6 +953,14 @@ function renderMovieChoices() {
 
 function openMoviePrompt() {
   if (movieStartedAt != null) return; // already playing
+  if (!hasProjector()) {
+    $("status").textContent = "Buy the Movie projector (10,000 🎟) in the shop to play movies.";
+    return;
+  }
+  if (!movieUnlockedAtLevel(DEFAULT_MOVIE_ID, playerLevel())) {
+    $("status").textContent = `Movies unlock at level ${movieById(DEFAULT_MOVIE_ID).unlockAtLevel}.`;
+    return;
+  }
   const overlay = $("movie-overlay");
   if (!overlay) {
     // No modal in the DOM — just start the default feature directly.
