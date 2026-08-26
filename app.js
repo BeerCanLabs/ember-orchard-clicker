@@ -19,12 +19,17 @@ const {
   isMilestoneLevel,
   milestoneAnimation,
   movieRate,
+  movieRateWithMultiplier,
   movieIsPlaying,
   movieUnlockedAtLevel,
   movieById,
+  buyProjector,
+  earningsMultiplier,
   MOVIES,
   DEFAULT_MOVIE_ID,
   MOVIE_PROJECTOR_ID,
+  MOVIE_PROJECTOR_COST,
+  MOVIE_PROJECTOR_UNLOCK_LEVEL,
   INVENTORY_SIZE,
   CLICK_EXP,
   BUY_EXP,
@@ -458,7 +463,15 @@ function devForceLevelUp() {
 
 function render() {
   $("embers").textContent = format(state.embers);
-  $("per-second").textContent = format(perSecond(state.owned, state.inventory));
+  // Per-second shown at the top includes the live movie bonus (with the run's
+  // earnings multiplier, e.g. Double feature) while a showing is running, so the
+  // player sees the movie's contribution folded into their rate.
+  let ratePerSecond = perSecond(state.owned, state.inventory);
+  if (movieStartedAt != null) {
+    const elapsed = movieElapsed();
+    if (elapsed != null) ratePerSecond += movieRateWithMultiplier(elapsed, currentMovieId, state.owned);
+  }
+  $("per-second").textContent = format(ratePerSecond);
   $("per-click").textContent = format(perClick(state.owned));
   $("owned-count").textContent = `${totalOwned(state.owned)} owned`;
   if ($("magic-points")) $("magic-points").textContent = format(state.magicPoints);
@@ -468,26 +481,32 @@ function render() {
     const playing = movieStartedAt != null;
     const level = playerLevel();
     const owned = hasProjector();
-    // The matinee (feature 1) unlocks at level 15; that's the earliest any movie
-    // can play. You also need to have bought the projector in the shop.
-    const levelReady = movieUnlockedAtLevel(DEFAULT_MOVIE_ID, level);
-    // Cheapest movie sets the affordability threshold for opening the picker.
-    const cheapest = Math.min(...Object.values(MOVIES).map((m) => m.cost));
-    const canOpen = owned && levelReady && state.embers >= cheapest;
-    // Disabled unless a showing is running or the player can open the picker.
-    movieBtn.disabled = !playing && !canOpen;
-    // Hide the button entirely until the projector is owned — nothing to use yet.
-    movieBtn.hidden = !owned && !playing;
+    // Movies (and the projector purchase) become relevant at level 15.
+    const levelReady = level >= MOVIE_PROJECTOR_UNLOCK_LEVEL;
+    const canBuyProjector = !owned && levelReady && state.embers >= MOVIE_PROJECTOR_COST;
+
+    // Visibility: hidden until level 15 (nothing to do yet). From level 15 on,
+    // the button is always shown — first as a "buy the projector" button, then
+    // (once owned) as the movie player you can always open to look inside.
+    movieBtn.hidden = !levelReady && !playing;
+
+    // The button is clickable when: a movie is playing (shows status), OR you
+    // own the projector (open the picker any time — no ticket gate to look), OR
+    // you can afford to buy the projector.
+    movieBtn.disabled = !playing && !owned && !canBuyProjector;
+
+    // The projector shows a "BUY" chip with its price until it's owned.
+    movieBtn.classList.toggle("is-unowned", !owned && !playing);
+    const buyChip = $("projector-buy-chip");
+    if (buyChip) buyChip.textContent = `${format(MOVIE_PROJECTOR_COST)} 🎟`;
 
     let label;
     if (playing) {
       label = "Movie playing";
     } else if (!owned) {
-      label = "Buy the Movie projector to play movies";
-    } else if (!levelReady) {
-      label = `Movies unlock at level ${movieById(DEFAULT_MOVIE_ID).unlockAtLevel}`;
+      label = `Buy the movie projector for ${format(MOVIE_PROJECTOR_COST)} tickets`;
     } else {
-      label = `Play a movie (from ${format(cheapest)} tickets)`;
+      label = "Open the movie projector";
     }
     movieBtn.setAttribute("aria-label", label);
     movieBtn.title = label;
@@ -842,7 +861,9 @@ function tickMovie() {
     stopMovie();
     return;
   }
-  const bonusPerSecond = movieRate(elapsed, currentMovieId);
+  // Movie payout respects the run's earnings multiplier (e.g. Double feature
+  // doubles movie tickets too), matching the shop economy.
+  const bonusPerSecond = movieRateWithMultiplier(elapsed, currentMovieId, state.owned);
   if (bonusPerSecond > 0) state.embers += bonusPerSecond / 10; // 100ms tick
   updateMovieUi(elapsed);
 }
@@ -903,7 +924,7 @@ function updateMovieUi(elapsed) {
   }
   const rateLabel = $("movie-rate");
   if (rateLabel && movieStartedAt != null) {
-    rateLabel.textContent = `+${format(movieRate(elapsed, currentMovieId))}/s`;
+    rateLabel.textContent = `+${format(movieRateWithMultiplier(elapsed, currentMovieId, state.owned))}/s`;
   }
 }
 
@@ -954,11 +975,8 @@ function renderMovieChoices() {
 function openMoviePrompt() {
   if (movieStartedAt != null) return; // already playing
   if (!hasProjector()) {
-    $("status").textContent = "Buy the Movie projector (10,000 🎟) in the shop to play movies.";
-    return;
-  }
-  if (!movieUnlockedAtLevel(DEFAULT_MOVIE_ID, playerLevel())) {
-    $("status").textContent = `Movies unlock at level ${movieById(DEFAULT_MOVIE_ID).unlockAtLevel}.`;
+    // Shouldn't happen (the click handler buys first), but guard anyway.
+    $("status").textContent = "Buy the movie projector first.";
     return;
   }
   const overlay = $("movie-overlay");
@@ -981,8 +999,46 @@ function closeMoviePrompt() {
   }, 200);
 }
 
+/**
+ * Clicking the projector button either BUYS the projector (if not owned yet) or
+ * OPENS the movie picker (if already owned). This makes the projector button
+ * itself the purchase point — there is no shop entry for it.
+ */
+function handleProjectorClick() {
+  if (movieStartedAt != null) return; // a showing is running; ignore clicks
+  if (hasProjector()) {
+    openMoviePrompt();
+    return;
+  }
+  purchaseProjector();
+}
+
+function purchaseProjector() {
+  const result = buyProjector(state, { level: playerLevel() });
+  if (!result.ok) {
+    if (result.reason === "locked") {
+      $("status").textContent = `The movie projector unlocks at level ${MOVIE_PROJECTOR_UNLOCK_LEVEL}.`;
+    } else if (result.reason === "unaffordable") {
+      $("status").textContent = `Need ${format(MOVIE_PROJECTOR_COST)} tickets to buy the movie projector.`;
+    }
+    render();
+    return false;
+  }
+  state.embers = result.state.embers;
+  state.owned = result.state.owned;
+  applyExp(result.expGained || BUY_EXP);
+  $("status").textContent = "🎬 Movie projector acquired! Click it any time to pick a feature.";
+  const btn = $("movie-button");
+  if (btn) celebratePurchase(btn, { name: "Movie projector" });
+  // Open the picker right away so the player can look inside immediately.
+  openMoviePrompt();
+  render();
+  save();
+  return true;
+}
+
 if ($("movie-button")) {
-  $("movie-button").addEventListener("click", openMoviePrompt);
+  $("movie-button").addEventListener("click", handleProjectorClick);
 }
 if ($("movie-cancel")) {
   $("movie-cancel").addEventListener("click", closeMoviePrompt);

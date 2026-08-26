@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="style.css?v=5" />
+    <link rel="stylesheet" href="style.css?v=6" />
   </head>
   <body>
     <div class="bg-aurora" aria-hidden="true"></div>
@@ -158,8 +158,9 @@
       <p id="status" class="status" aria-live="polite">The ticket booth is quiet. For now.</p>
     </main>
 
-    <!-- Movie projector: fixed bottom-right retro badge button (flat, no images) -->
-    <button type="button" class="movie-button" id="movie-button" title="Play a movie" aria-label="Play a movie">
+    <!-- Movie projector: fixed bottom-right retro badge button (flat, no images).
+         Clicking it BUYS the projector when unowned, then OPENS the movie picker. -->
+    <button type="button" class="movie-button" id="movie-button" title="Movie projector" aria-label="Movie projector" hidden>
       <span class="projector-badge" aria-hidden="true">
         <svg class="projector-glyph" width="38" height="32" viewBox="0 0 38 32">
           <!-- feed reel (spins while playing) -->
@@ -185,6 +186,11 @@
           <path class="beam" d="M27 21 L38 17 L38 27 L27 24 Z"/>
         </svg>
         <span class="projector-label">MOVIE<small class="projector-sub">PROJECTOR</small></span>
+      </span>
+      <!-- Shown only while the projector is unowned: the one-time purchase price -->
+      <span class="projector-buy" aria-hidden="true">
+        <span class="projector-buy-tag">BUY</span>
+        <span class="projector-buy-chip" id="projector-buy-chip">10,000 🎟</span>
       </span>
       <span class="movie-badge" id="movie-badge">
         <span class="movie-time-left" id="movie-time-left"></span>
@@ -216,7 +222,7 @@
       </div>
     </div>
 
-    <script src="game-core.js?v=7"></script>
-    <script src="app.js?v=7"></script>
+    <script src="game-core.js?v=8"></script>
+    <script src="app.js?v=8"></script>
   </body>
 </html>

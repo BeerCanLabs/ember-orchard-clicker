@@ -42,8 +42,13 @@
   };
   const DEFAULT_MOVIE_ID = "matinee";
 
-  // Playing any movie first requires owning the projector, bought in the shop.
+  // Playing any movie first requires owning the projector. It is NOT a shop
+  // upgrade — it's bought by clicking the projector button itself. We still
+  // record ownership under state.owned[MOVIE_PROJECTOR_ID] so it wipes on
+  // prestige/reset like everything else in the run.
   const MOVIE_PROJECTOR_ID = "projector";
+  const MOVIE_PROJECTOR_COST = 10000; // one-time ticket cost to buy the projector
+  const MOVIE_PROJECTOR_UNLOCK_LEVEL = 15; // earliest level you can buy it
 
   /** Look up a movie by id, falling back to the default feature. */
   function movieById(movieId) {
@@ -107,15 +112,6 @@
       maxOwned: 1,
       unlockAtLevel: 10,
       reveal: "curtains",
-    },
-    {
-      id: "projector",
-      icon: "🎬",
-      name: "Movie projector",
-      note: "Unlocks the movie feature",
-      baseCost: 10000,
-      maxOwned: 1,
-      unlockAtLevel: 15,
     },
   ];
 
@@ -327,6 +323,47 @@
     };
   }
 
+  /** True once the run owns the movie projector. */
+  function hasProjector(owned) {
+    return count(owned || {}, MOVIE_PROJECTOR_ID) > 0;
+  }
+
+  /**
+   * Pure attempt to buy the movie projector by clicking the projector button.
+   * Requires level >= MOVIE_PROJECTOR_UNLOCK_LEVEL and MOVIE_PROJECTOR_COST
+   * tickets. One-time; never mutates input. context may include { level }.
+   */
+  function buyProjector(state, context = {}) {
+    if (hasProjector(state.owned)) {
+      return { ok: false, reason: "owned", state, cost: MOVIE_PROJECTOR_COST };
+    }
+    const level = context.level || 1;
+    if (level < MOVIE_PROJECTOR_UNLOCK_LEVEL) {
+      return { ok: false, reason: "locked", state, cost: MOVIE_PROJECTOR_COST };
+    }
+    if ((state.embers || 0) < MOVIE_PROJECTOR_COST) {
+      return { ok: false, reason: "unaffordable", state, cost: MOVIE_PROJECTOR_COST };
+    }
+    return {
+      ok: true,
+      cost: MOVIE_PROJECTOR_COST,
+      expGained: BUY_EXP,
+      state: {
+        embers: state.embers - MOVIE_PROJECTOR_COST,
+        owned: { ...state.owned, [MOVIE_PROJECTOR_ID]: 1 },
+      },
+    };
+  }
+
+  /**
+   * Bonus tickets/sec from a movie, WITH the run's earnings multiplier applied
+   * (e.g. Double feature doubles movie payouts too). `owned` supplies the
+   * multiplier; pass {} for the raw rate.
+   */
+  function movieRateWithMultiplier(elapsed, movieId, owned) {
+    return movieRate(elapsed, movieId) * earningsMultiplier(owned || {});
+  }
+
   /**
    * Prestige: spend PRESTIGE_COST tickets, wipe run progress (tickets, upgrades,
    * levels/XP, inventory), keep magic points and add MAGIC_PER_PRESTIGE.
@@ -370,12 +407,17 @@
     prestige,
     canPrestige,
     movieRate,
+    movieRateWithMultiplier,
     movieIsPlaying,
     movieUnlockedAtLevel,
     movieById,
+    hasProjector,
+    buyProjector,
     MOVIES,
     DEFAULT_MOVIE_ID,
     MOVIE_PROJECTOR_ID,
+    MOVIE_PROJECTOR_COST,
+    MOVIE_PROJECTOR_UNLOCK_LEVEL,
     count,
     totalOwned,
     isMaxed,

@@ -1703,6 +1703,32 @@ h1 {
 .movie-time-left { color: rgba(26, 16, 24, 0.7); font-weight: 600; }
 .movie-rate { color: var(--buy-ink); font-weight: 800; }
 
+/* "BUY 10,000🎟" chip — shown only while the projector is not yet owned. */
+.projector-buy {
+  display: none;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.15;
+  padding-left: 0.55rem;
+  margin-left: 0.15rem;
+  border-left: 1px solid rgba(26, 16, 24, 0.35);
+}
+.movie-button.is-unowned .projector-buy { display: inline-flex; }
+.projector-buy-tag {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  opacity: 0.72;
+  color: var(--buy-ink);
+}
+.projector-buy-chip { font-size: 0.8rem; font-weight: 800; color: var(--buy-ink); white-space: nowrap; }
+/* A gentle "come buy me" pulse to draw the eye once it appears at level 15. */
+.movie-button.is-unowned:not(:disabled) { animation: projector-invite 1.8s ease-in-out infinite; }
+@keyframes projector-invite {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(255, 170, 90, 0.5), 0 10px 24px rgba(0, 0, 0, 0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 170, 90, 0.18), 0 10px 24px rgba(0, 0, 0, 0.5); }
+}
+
 /* ── Powered-on state: the badge "runs the reel" while a movie plays ───────── */
 .movie-button.is-playing {
   animation: movie-glow 2s ease-in-out infinite, movie-shake 0.16s steps(2) infinite;
@@ -1908,6 +1934,7 @@ body.movie-playing::after {
 .movie-cancel:active { transform: scale(0.97); }
 
 @media (prefers-reduced-motion: reduce) {
+  .movie-button.is-unowned:not(:disabled),
   .movie-button.is-playing,
   .movie-button.is-playing::before,
   .movie-button.is-playing .projector-glyph .reel--feed,

@@ -45,11 +45,13 @@ test("KPF: ticket clerk is the first shop entry and costs 25", () => {
   assert.equal(price(byId("lantern"), {}), 25);
 });
 
-test("KPF: shop order ends with double feature then movie projector", () => {
+test("KPF: shop order ends with double feature after box office (projector is NOT a shop item)", () => {
   assert.deepEqual(
     upgrades.map((upgrade) => upgrade.id),
-    ["lantern", "roots", "moth", "grove", "premiere", "projector"]
+    ["lantern", "roots", "moth", "grove", "premiere"]
   );
+  // The movie projector is bought via its own button, not the shop.
+  assert.equal(upgrades.find((u) => u.id === "projector"), undefined);
 });
 
 test("KPF: buying ticket clerks produces passive tickets", () => {
@@ -381,24 +383,51 @@ test("an unknown movieId uses the default movie's rate", () => {
   assert.equal(movieRate(0, "does-not-exist"), MOVIES.matinee.peakRate);
 });
 
-// ── Movie projector purchase + level gates ───────────────────────────────────
+// ── Movie projector purchase (via its own button, not the shop) + level gates ─
 
-const { movieUnlockedAtLevel, MOVIE_PROJECTOR_ID } = require("../game-core.js");
+const {
+  movieUnlockedAtLevel,
+  MOVIE_PROJECTOR_ID,
+  MOVIE_PROJECTOR_COST,
+  MOVIE_PROJECTOR_UNLOCK_LEVEL,
+  buyProjector,
+  hasProjector,
+  movieRateWithMultiplier,
+} = require("../game-core.js");
 
-test("KPF: the movie projector is a one-time 10000-ticket shop upgrade unlocked at level 15", () => {
-  const projector = byId(MOVIE_PROJECTOR_ID);
-  assert.ok(projector, "projector upgrade exists in the shop");
-  assert.equal(price(projector, {}), 10000);
-  assert.equal(maxFor(projector), 1);
-  // Locked below level 15, buyable at 15, and only once.
-  assert.equal(isUnlocked(projector, {}, { level: 14 }), false);
-  assert.equal(buyUpgrade({ embers: 1e9, owned: {} }, "projector", { level: 14 }).reason, "locked");
-  const bought = buyUpgrade({ embers: 1e9, owned: {} }, "projector", { level: 15 });
+test("KPF: the movie projector is bought via buyProjector for 10000 tickets, once, at level 15", () => {
+  assert.equal(MOVIE_PROJECTOR_COST, 10000);
+  assert.equal(MOVIE_PROJECTOR_UNLOCK_LEVEL, 15);
+
+  // Locked below level 15.
+  const low = buyProjector({ embers: 1e9, owned: {} }, { level: 14 });
+  assert.equal(low.ok, false);
+  assert.equal(low.reason, "locked");
+
+  // At level 15 but too poor.
+  const poor = buyProjector({ embers: 5000, owned: {} }, { level: 15 });
+  assert.equal(poor.ok, false);
+  assert.equal(poor.reason, "unaffordable");
+
+  // Level 15 + funds succeeds, spends 10000, and records ownership.
+  const bought = buyProjector({ embers: 12000, owned: { lantern: 3 } }, { level: 15 });
   assert.equal(bought.ok, true);
+  assert.equal(bought.cost, 10000);
+  assert.equal(bought.state.embers, 2000);
   assert.equal(bought.state.owned.projector, 1);
-  const again = buyUpgrade({ embers: 1e9, owned: bought.state.owned }, "projector", { level: 99 });
+  assert.equal(bought.state.owned.lantern, 3); // other upgrades preserved
+  assert.equal(hasProjector(bought.state.owned), true);
+
+  // Cannot be bought twice.
+  const again = buyProjector({ embers: 1e9, owned: bought.state.owned }, { level: 99 });
   assert.equal(again.ok, false);
-  assert.equal(again.reason, "maxed");
+  assert.equal(again.reason, "owned");
+});
+
+test("KPF: hasProjector reflects ownership", () => {
+  assert.equal(hasProjector({}), false);
+  assert.equal(hasProjector({ projector: 1 }), true);
+  assert.equal(hasProjector(), false);
 });
 
 test("KPF: the projector does not change ticket earnings", () => {
@@ -407,6 +436,20 @@ test("KPF: the projector does not change ticket earnings", () => {
   const withProjector = { lantern: 5, projector: 1 };
   assert.equal(perSecond(withProjector, []), perSecond(withoutProjector, []));
   assert.equal(perClick(withProjector), perClick(withoutProjector));
+});
+
+test("KPF: movie payouts respect the earnings multiplier (Double feature doubles movie tickets)", () => {
+  // Raw rate vs multiplied rate at peak.
+  const rawMatinee = movieRate(0, "matinee");
+  assert.equal(movieRateWithMultiplier(0, "matinee", {}), rawMatinee);
+  assert.equal(movieRateWithMultiplier(0, "matinee", { premiere: 1 }), rawMatinee * 2);
+  // Also applies during the fade, at every instant.
+  assert.equal(movieRateWithMultiplier(37.5, "matinee", { premiere: 1 }), movieRate(37.5, "matinee") * 2);
+  // Works for the premiere feature too.
+  assert.equal(
+    movieRateWithMultiplier(0, "premiere", { premiere: 1 }),
+    movieRate(0, "premiere") * 2
+  );
 });
 
 test("KPF: the matinee unlocks at level 15, the premiere at level 20", () => {
